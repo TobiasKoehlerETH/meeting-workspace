@@ -1,0 +1,23 @@
+# Local build outputs and dependency caches
+.build-source/
+.build-tools/
+node_modules/
+.next/
+out/
+target/
+dist/
+*.tsbuildinfo
+src-tauri/binaries/
+src-tauri/logs/
+src-tauri/runtime/
+.env
+**/.env
+**/*.env
+**/*.key
+**/*.p12
+**/*.pfx
+**/*.pem
+__pycache__/
+*.pyc
+*.log
+.vscode/

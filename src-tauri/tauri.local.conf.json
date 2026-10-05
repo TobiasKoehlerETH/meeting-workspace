@@ -1,0 +1,15 @@
+{
+  "build": {
+    "beforeBundleCommand": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/stage-windows-runtime.ps1"
+  },
+  "bundle": {
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": false,
+    "resources": {
+      "templates/*.json": "templates/",
+      "../LICENSE": "LICENSE",
+      "runtime/*.dll": ""
+    },
+    "windows": { "signCommand": null }
+  }
+}
