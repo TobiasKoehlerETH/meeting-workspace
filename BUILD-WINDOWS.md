@@ -24,3 +24,6 @@ No release signing keys, automatic update endpoints, or telemetry services are u
 
 The UI follows the A+P workshop style guide. Futura is used when installed locally,
 with geometric sans-serif fallbacks. Font files are not bundled.
+
+The app icon source is `public/app-icon.ico`. Derived PNG and platform icons are
+stored in `src-tauri/icons/`; the Windows icon and favicon preserve the source ICO.

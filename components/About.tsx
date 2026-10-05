@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { getVersion } from '@tauri-apps/api/app';
+import Image from 'next/image';
 
 export function About() {
   const [version, setVersion] = useState('0.4.0');
@@ -7,6 +8,7 @@ export function About() {
   return (
     <div className="p-4 space-y-6">
       <header className="space-y-2">
+        <Image src="/app-icon.png" alt="Meeting Workspace" width={48} height={48} />
         <h2 className="text-2xl">Meeting Workspace</h2>
         <p className="text-sm text-gray-500">Version {version}</p>
         <p className="text-base">Record, transcribe, and summarize your meetings.</p>
