@@ -1,5 +1,4 @@
 import React from 'react';
-import Image from 'next/image';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ProgressIndicator } from './shared/ProgressIndicator';
@@ -47,7 +46,6 @@ export function OnboardingContainer({
     <div className="ap-onboarding fixed inset-0 bg-white flex items-center justify-center z-50 overflow-hidden">
       <div className={cn('w-full max-w-2xl h-full max-h-screen flex flex-col px-6 py-6', className)}>
         <div className="ap-onboarding-brand">
-          <Image src="/angst-pfister-logo.png" alt="Angst+Pfister" width={176} height={52} className="ap-company-logo" />
           <span className="ap-eyebrow">Meeting Workspace</span>
         </div>
         {/* Progress Indicator with Navigation - Fixed */}

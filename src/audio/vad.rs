@@ -3,6 +3,41 @@ use silero_rs::{VadConfig, VadSession, VadTransition};
 use log::{debug, info, warn};
 use std::collections::VecDeque;
 use std::time::Duration;
+use std::sync::Mutex;
+
+static PREPARED_CAPTURE_VAD: Mutex<Option<ContinuousVadProcessor>> = Mutex::new(None);
+
+#[cfg(test)]
+mod speed_tests {
+    #[test]
+    fn prepared_detector_starts_with_clean_state() {
+        *super::PREPARED_CAPTURE_VAD.lock().unwrap() = None;
+        let cold_start = std::time::Instant::now();
+        super::prepare_capture_vad().unwrap();
+        let cold_elapsed = cold_start.elapsed();
+        let warm_start = std::time::Instant::now();
+        let detector = super::ContinuousVadProcessor::new(48000, 400).unwrap();
+        let warm_elapsed = warm_start.elapsed();
+        assert_eq!(detector.sample_rate, 48000);
+        assert_eq!(detector.processed_samples, 0);
+        assert!(detector.buffer.is_empty());
+        assert!(detector.speech_segments.is_empty());
+        assert!(!detector.in_speech);
+        assert!(super::PREPARED_CAPTURE_VAD.lock().unwrap().is_none());
+        println!("Speech detection preparation: cold={}ms, prepared={}us", cold_elapsed.as_millis(), warm_elapsed.as_micros());
+    }
+}
+
+/// Prepare a fresh detector without opening a microphone or starting recording.
+pub fn prepare_capture_vad() -> Result<()> {
+    if PREPARED_CAPTURE_VAD.lock().map_err(|_| anyhow!("Speech detector cache is unavailable"))?.is_some() {
+        return Ok(());
+    }
+    let detector = ContinuousVadProcessor::build(48000, 400)?;
+    let mut cache = PREPARED_CAPTURE_VAD.lock().map_err(|_| anyhow!("Speech detector cache is unavailable"))?;
+    if cache.is_none() { *cache = Some(detector); }
+    Ok(())
+}
 
 /// Represents a complete speech segment detected by VAD
 #[derive(Debug, Clone)]
@@ -30,6 +65,16 @@ pub struct ContinuousVadProcessor {
 
 impl ContinuousVadProcessor {
     pub fn new(input_sample_rate: u32, redemption_time_ms: u32) -> Result<Self> {
+        if input_sample_rate == 48000 && redemption_time_ms == 400 {
+            if let Some(prepared) = PREPARED_CAPTURE_VAD.lock().map_err(|_| anyhow!("Speech detector cache is unavailable"))?.take() {
+                info!("Using the prepared speech detector");
+                return Ok(prepared);
+            }
+        }
+        Self::build(input_sample_rate, redemption_time_ms)
+    }
+
+    fn build(input_sample_rate: u32, redemption_time_ms: u32) -> Result<Self> {
         // Silero VAD MUST use 16kHz - this is hardcoded requirement
         const VAD_SAMPLE_RATE: u32 = 16000;
 

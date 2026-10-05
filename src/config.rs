@@ -11,6 +11,22 @@ pub const DEFAULT_WHISPER_MODEL: &str = "large-v3-turbo";
 /// This is the quantized version optimized for speed.
 pub const DEFAULT_PARAKEET_MODEL: &str = "parakeet-tdt-0.6b-v3-int8";
 
+/// Whisper and OpenRouter use the German language hint for Swiss German speech.
+pub fn normalize_spoken_language(language: &str) -> &str {
+    match language { "gsw" => "de", other => other }
+}
+
+#[cfg(test)]
+mod language_tests {
+    #[test]
+    fn swiss_german_uses_a_supported_german_hint() {
+        assert_eq!(super::normalize_spoken_language("gsw"), "de");
+        for language in ["de", "en", "auto"] {
+            assert_eq!(super::normalize_spoken_language(language), language);
+        }
+    }
+}
+
 /// Whisper model catalog with metadata for all supported models.
 /// Used by both WhisperEngine::discover_models() and discover_models_standalone().
 ///

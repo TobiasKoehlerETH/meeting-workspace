@@ -105,10 +105,6 @@ impl WhisperEngine {
                     current_dir.join("models")
                 } else if current_dir.join("../models").exists() {
                     current_dir.join("../models")
-                } else if current_dir.join("backend/whisper-server-package/models").exists() {
-                    current_dir.join("backend/whisper-server-package/models")
-                } else if current_dir.join("../backend/whisper-server-package/models").exists() {
-                    current_dir.join("../backend/whisper-server-package/models")
                 } else {
                     // Create models directory in current directory for development
                     current_dir.join("models")

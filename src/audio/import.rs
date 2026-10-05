@@ -317,6 +317,7 @@ async fn run_import<R: Runtime>(
     provider: Option<String>,
 ) -> Result<ImportResult> {
     let source = PathBuf::from(&source_path);
+    let language = language.map(|value| crate::config::normalize_spoken_language(&value).to_owned());
 
     // Validate source file
     if !source.exists() {

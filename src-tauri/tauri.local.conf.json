@@ -6,6 +6,7 @@
     "targets": ["nsis"],
     "createUpdaterArtifacts": false,
     "resources": {
+      "licenses/*": "licenses/",
       "templates/*.json": "templates/",
       "../LICENSE": "LICENSE",
       "runtime/*.dll": ""

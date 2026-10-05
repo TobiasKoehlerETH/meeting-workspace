@@ -7,7 +7,7 @@ use anyhow::Result;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
+    atomic::{AtomicBool, AtomicU64, Ordering},
     Arc, Mutex,
 };
 use tauri::{AppHandle, Emitter, Manager, Runtime};
@@ -37,6 +37,46 @@ pub use super::transcription::TranscriptUpdate;
 
 // Simple recording state tracking
 static IS_RECORDING: AtomicBool = AtomicBool::new(false);
+static MODEL_CACHE_EPOCH: AtomicU64 = AtomicU64::new(0);
+
+fn schedule_idle_model_cleanup() {
+    let epoch = MODEL_CACHE_EPOCH.fetch_add(1, Ordering::SeqCst) + 1;
+    tokio::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_secs(180)).await;
+        let _guard = super::common::acquire_engine_lifecycle_lock().await;
+        if IS_RECORDING.load(Ordering::SeqCst) || MODEL_CACHE_EPOCH.load(Ordering::SeqCst) != epoch { return; }
+        let parakeet = crate::parakeet_engine::commands::PARAKEET_ENGINE.lock().ok().and_then(|engine| engine.as_ref().cloned());
+        let whisper = crate::whisper_engine::commands::WHISPER_ENGINE.lock().ok().and_then(|engine| engine.as_ref().cloned());
+        if let Some(engine) = parakeet { engine.unload_model().await; }
+        if let Some(engine) = whisper { engine.unload_model().await; }
+        info!("Released idle speech models after three minutes");
+    });
+}
+
+#[tauri::command]
+pub async fn prepare_recording<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
+    let vad = tokio::task::spawn_blocking(|| super::vad::prepare_capture_vad().map_err(|error| error.to_string()));
+    let guard = super::common::acquire_engine_lifecycle_lock().await;
+    let readiness = if IS_RECORDING.load(Ordering::SeqCst) {
+        Ok(())
+    } else {
+        MODEL_CACHE_EPOCH.fetch_add(1, Ordering::SeqCst);
+        let readiness = transcription::validate_transcription_model_ready(&app).await;
+        if readiness.is_ok() { schedule_idle_model_cleanup(); }
+        readiness
+    };
+    drop(guard);
+    if readiness.is_ok() && super::transcription::nemotron::is_two_stage() {
+        let prepared_app = app.clone();
+        tokio::spawn(async move {
+            if let Err(error) = super::transcription::nemotron::prepare(&prepared_app).await {
+                warn!("Cannot prepare local live transcription: {}", error);
+            }
+        });
+    }
+    vad.await.map_err(|_| "Cannot prepare speech detection.".to_string())??;
+    readiness
+}
 
 // Global recording manager and transcription task to keep them alive during recording
 static RECORDING_MANAGER: Mutex<Option<RecordingManager>> = Mutex::new(None);
@@ -620,84 +660,8 @@ pub async fn stop_recording<R: Runtime>(
         }),
     );
 
-    info!("🧠 All transcript chunks processed. Now safely unloading transcription model...");
-
-    // Determine which provider was used and unload the appropriate model (with timeout)
-    let config = match tokio::time::timeout(
-        tokio::time::Duration::from_secs(30), // 30 seconds max for DB operation
-        crate::api::api::api_get_transcript_config(
-            app.clone(),
-            app.clone().state(),
-            None,
-        )
-    )
-    .await
-    {
-        Ok(Ok(Some(config))) => Some(config.provider),
-        Ok(Ok(None)) => None,
-        Ok(Err(e)) => {
-            warn!("⚠️ Failed to get transcript config: {:?}", e);
-            None
-        }
-        Err(_) => {
-            warn!("⏱️ Transcript config timeout (30s), continuing shutdown");
-            None
-        }
-    };
-
-    match config.as_deref() {
-        Some("parakeet") => {
-            info!("🦜 Unloading Parakeet model...");
-            let engine_clone = {
-                let engine_guard = crate::parakeet_engine::commands::PARAKEET_ENGINE
-                    .lock()
-                    .unwrap();
-                engine_guard.as_ref().cloned()
-            };
-
-            if let Some(engine) = engine_clone {
-                let current_model = engine
-                    .get_current_model()
-                    .await
-                    .unwrap_or_else(|| "unknown".to_string());
-                info!("Current Parakeet model before unload: '{}'", current_model);
-
-                if engine.unload_model().await {
-                    info!("✅ Parakeet model '{}' unloaded successfully", current_model);
-                } else {
-                    warn!("⚠️ Failed to unload Parakeet model '{}'", current_model);
-                }
-            } else {
-                warn!("⚠️ No Parakeet engine found to unload model");
-            }
-        }
-        _ => {
-            // Default to Whisper
-            info!("🎤 Unloading Whisper model...");
-            let engine_clone = {
-                let engine_guard = crate::whisper_engine::commands::WHISPER_ENGINE
-                    .lock()
-                    .unwrap();
-                engine_guard.as_ref().cloned()
-            };
-
-            if let Some(engine) = engine_clone {
-                let current_model = engine
-                    .get_current_model()
-                    .await
-                    .unwrap_or_else(|| "unknown".to_string());
-                info!("Current Whisper model before unload: '{}'", current_model);
-
-                if engine.unload_model().await {
-                    info!("✅ Whisper model '{}' unloaded successfully", current_model);
-                } else {
-                    warn!("⚠️ Failed to unload Whisper model '{}'", current_model);
-                }
-            } else {
-                warn!("⚠️ No Whisper engine found to unload model");
-            }
-        }
-    }
+    // Keep speech models ready for the next recording, then release them when idle.
+    schedule_idle_model_cleanup();
 
     // Step 4: Finalize recording state and cleanup resources safely
     let _ = app.emit(

@@ -63,7 +63,7 @@ export default function Home() {
 
   useEffect(() => {
     // Track page view
-    
+
   }, []);
 
   // Startup recovery check
@@ -222,7 +222,7 @@ export default function Home() {
         {(hasMicrophone || isRecording) &&
           status !== RecordingStatus.PROCESSING_TRANSCRIPTS &&
           status !== RecordingStatus.SAVING && (
-            <div className="fixed bottom-12 left-0 right-0 z-10">
+            <div className="pointer-events-none fixed bottom-12 left-0 right-0 z-10">
               <div
                 className="flex justify-center transition-[margin] duration-300"
                 style={{
@@ -230,11 +230,12 @@ export default function Home() {
                 }}
               >
                 <div className="w-2/3 max-w-[750px] flex justify-center">
-                  <div className="ap-recording-toolbar bg-white flex items-center">
+                  <div className="pointer-events-auto ap-recording-toolbar bg-white flex items-center">
                     <RecordingControls
                       isRecording={recordingState.isRecording}
                       onRecordingStop={(callApi = true) => handleRecordingStop(callApi)}
                       onRecordingStart={handleRecordingStart}
+                      onOpenDeviceSettings={() => showModal('deviceSettings')}
                       onTranscriptReceived={() => { }} // Not actually used by RecordingControls
                       onStopInitiated={() => setIsStopping(true)}
                       barHeights={barHeights}

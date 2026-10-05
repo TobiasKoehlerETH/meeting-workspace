@@ -66,6 +66,11 @@ impl RecordingManager {
         system_device: Option<Arc<AudioDevice>>,
         auto_save: bool,
     ) -> Result<mpsc::UnboundedReceiver<AudioChunk>> {
+        let auto_save = auto_save || super::transcription::nemotron::is_two_stage();
+        let microphone_device = if super::transcription::nemotron::is_two_stage() && microphone_device.is_none() {
+            Some(Arc::new(super::default_input_device()?))
+        } else { microphone_device };
+        let system_device = if super::transcription::nemotron::is_two_stage() { None } else { system_device };
         info!("Starting recording manager (auto_save: {})", auto_save);
 
         // Set up transcription channel
@@ -75,6 +80,9 @@ impl RecordingManager {
         // Pipeline will mix mic + system audio professionally and send to this channel
         // Pass auto_save to control whether audio checkpoints are created
         let recording_sender = self.recording_saver.start_accumulation(auto_save);
+        if super::transcription::nemotron::is_two_stage() && !self.recording_saver.has_audio_saver() {
+            return Err(anyhow::anyhow!("Cannot create the original recording.wav. Check the recording folder."));
+        }
 
         // Start recording state first
         self.state.start_recording()?;
@@ -118,12 +126,16 @@ impl RecordingManager {
             sys_kind,
         )?;
 
-        // Give the pipeline a moment to fully initialize before starting streams
-        tokio::time::sleep(tokio::time::Duration::from_millis(50)).await;
+        // The pipeline channel is ready and queues audio while its worker starts.
 
         // Start audio streams - they send RAW unmixed chunks to pipeline for mixing
         // Pipeline handles mixing and distribution to both recording and transcription
         self.stream_manager.start_streams(microphone_device.clone(), system_device.clone(), None).await?;
+        tokio::task::spawn_blocking(|| {
+            if let Err(error) = super::vad::prepare_capture_vad() {
+                warn!("Cannot prepare the next speech detector: {}", error);
+            }
+        });
 
         // Start device monitoring to detect disconnects
         if let Some(ref mut monitor) = self.device_monitor {

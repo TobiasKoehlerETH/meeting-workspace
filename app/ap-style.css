@@ -59,13 +59,19 @@
 }
 .ap-brand-collapsed { width: 40px; font-size: 24px !important; }
 .ap-sidebar { border-color: #dedede; }
-.ap-sidebar > div:last-child { padding: 16px 12px; }
+.ap-nav-icon { display: inline-flex; width: 40px; height: 40px; align-items: center; justify-content: center; border-radius: 4px; }
+.ap-nav-icon:hover, .ap-nav-item:hover { background: #f2f2f2; }
+.ap-nav-item { display: flex; width: 100%; min-height: 44px; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 4px; text-align: left; font-size: 14px; }
+.ap-nav-item:disabled { opacity: .5; cursor: default; }
+.ap-sidebar summary::-webkit-details-marker { display: none; }
+.ap-sidebar summary::after { content: '›'; margin-left: auto; font-size: 20px; }
+.ap-sidebar details[open] > summary::after { transform: rotate(90deg); }
 .ap-sidebar .rounded-lg, .ap-sidebar .rounded-md { border-radius: 3px; }
 .ap-sidebar .shadow-sm, .ap-sidebar .shadow-lg { box-shadow: none; }
 
-.ap-main-inner { padding: 0 32px; }
+.ap-main-inner { padding: 0; }
 .ap-main { background: #fff; }
-.ap-recording-page { border-left: 1px solid #dedede; border-right: 1px solid #dedede; }
+.ap-recording-page { border: 0; }
 .ap-recording-toolbar {
   border: 1px solid #dedede;
   border-top: 3px solid var(--ap-rule-red);
@@ -110,5 +116,5 @@
 .ap-onboarding .rounded-lg { border-radius: 4px; box-shadow: none; }
 
 @media (max-width: 900px) {
-  .ap-main-inner { padding: 0 16px; }
+  .ap-main-inner { padding: 0; }
 }

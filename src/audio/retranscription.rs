@@ -139,6 +139,7 @@ pub async fn start_retranscription<R: Runtime>(
 /// Find audio file in meeting folder
 /// Tries common names first, then scans for any file with an audio extension
 fn find_audio_file(folder: &Path) -> Result<PathBuf> {
+    if folder.join("recording.wav").is_file() { return Ok(folder.join("recording.wav")); }
     let candidates = [
         "audio.mp4", "audio.m4a", "audio.wav", "audio.mp3",
         "audio.flac", "audio.ogg", "recording.mp4",
@@ -178,6 +179,7 @@ async fn run_retranscription<R: Runtime>(
     provider: Option<String>,
 ) -> Result<RetranscriptionResult> {
     let folder_path = PathBuf::from(&meeting_folder_path);
+    let language = language.map(|value| crate::config::normalize_spoken_language(&value).to_owned());
     let audio_path = find_audio_file(&folder_path)?;
 
     // Determine which provider to use (default to whisper)
@@ -420,6 +422,9 @@ async fn run_retranscription<R: Runtime>(
 
     // Create transcript segments with proper timestamps from VAD
     let segments = create_transcript_segments(&all_transcripts);
+    if segments.is_empty() {
+        return Err(anyhow!("The final pass produced no speech. Existing transcript retained."));
+    }
 
     // Save to database
     let app_state = app

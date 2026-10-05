@@ -1,10 +1,11 @@
 // ISO 639-1 language codes supported by Whisper
 export const LANGUAGES = [
-  { code: 'auto', name: 'Auto Detect (Original Language)' },
+  { code: 'auto', name: 'Detect automatically' },
   { code: 'auto-translate', name: 'Auto Detect (Translate to English)' },
   { code: 'en', name: 'English' },
   { code: 'zh', name: 'Chinese' },
   { code: 'de', name: 'German' },
+  { code: 'gsw', name: 'Swiss German → Standard German' },
   { code: 'es', name: 'Spanish' },
   { code: 'ru', name: 'Russian' },
   { code: 'ko', name: 'Korean' },

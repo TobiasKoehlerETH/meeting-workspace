@@ -4,8 +4,88 @@ use log::{info, warn, error};
 use super::encode::encode_single_audio;
 use super::recording_state::AudioChunk;
 use serde::{Serialize, Deserialize};
+use std::io::{Seek, SeekFrom, Write};
+
+/// Lossless original microphone audio, with a valid header after every write.
+struct OriginalWav {
+    file: std::fs::File,
+    path: PathBuf,
+    sample_rate: u32,
+    bytes: u32,
+}
+
+impl OriginalWav {
+    fn create(path: PathBuf, sample_rate: u32) -> Result<Self> {
+        let file = std::fs::OpenOptions::new().write(true).create_new(true).open(&path)?;
+        let mut wav = Self { file, path, sample_rate, bytes: 0 };
+        wav.header()?;
+        Ok(wav)
+    }
+    fn header(&mut self) -> Result<()> {
+        self.file.seek(SeekFrom::Start(0))?;
+        self.file.write_all(b"RIFF")?;
+        self.file.write_all(&(36 + self.bytes).to_le_bytes())?;
+        self.file.write_all(b"WAVEfmt ")?;
+        self.file.write_all(&16u32.to_le_bytes())?;
+        self.file.write_all(&3u16.to_le_bytes())?; // IEEE float preserves captured sample values.
+        self.file.write_all(&1u16.to_le_bytes())?;
+        self.file.write_all(&self.sample_rate.to_le_bytes())?;
+        self.file.write_all(&(self.sample_rate * 4).to_le_bytes())?;
+        self.file.write_all(&4u16.to_le_bytes())?;
+        self.file.write_all(&32u16.to_le_bytes())?;
+        self.file.write_all(b"data")?;
+        self.file.write_all(&self.bytes.to_le_bytes())?;
+        self.file.seek(SeekFrom::End(0))?;
+        Ok(())
+    }
+    fn append(&mut self, samples: &[f32]) -> Result<()> {
+        let length = u32::try_from(samples.len() * 4)?;
+        let next = self.bytes.checked_add(length).filter(|size| *size <= u32::MAX - 36)
+            .ok_or_else(|| anyhow!("Original WAV reached its file size limit"))?;
+        self.file.write_all(bytemuck::cast_slice(samples))?;
+        self.bytes = next;
+        self.header()?;
+        Ok(())
+    }
+}
 
 use super::ffmpeg::find_ffmpeg_path;
+
+#[cfg(test)]
+mod original_audio_tests {
+    #[test]
+    fn lossless_wav_preserves_samples_and_is_decodable() {
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("recording.wav");
+        let samples: Vec<f32> = (0..16000).map(|i| ((i as f32 * 0.1).sin()) * 0.25).collect();
+        let mut wav = super::OriginalWav::create(path.clone(), 16000).unwrap();
+        wav.append(&samples[..8000]).unwrap();
+        wav.append(&samples[8000..]).unwrap();
+        wav.file.sync_all().unwrap();
+        drop(wav);
+        let bytes = std::fs::read(&path).unwrap();
+        assert_eq!(u32::from_le_bytes(bytes[40..44].try_into().unwrap()), 64000);
+        assert_eq!(&bytes[44..], bytemuck::cast_slice::<f32, u8>(&samples));
+        let decoded = crate::audio::decoder::decode_audio_file(&path).unwrap();
+        assert_eq!(decoded.sample_rate, 16000);
+        assert_eq!(decoded.samples.len(), samples.len());
+    }
+
+    #[test]
+    #[ignore = "Requires the locally downloaded Parakeet model and synthetic speech fixture"]
+    fn parakeet_final_pass_from_original_speech() {
+        let audio_path = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../.build-tools/transcription-smoke.wav");
+        let decoded = crate::audio::decoder::decode_audio_file(&audio_path).unwrap();
+        let audio = crate::audio::audio_processing::resample_audio(&decoded.samples, decoded.sample_rate, 16000);
+        let directory = std::path::PathBuf::from(std::env::var("APPDATA").unwrap()).join("local.meetingworkspace.app/models/parakeet/parakeet-tdt-0.6b-v3-int8");
+        let started = std::time::Instant::now();
+        let mut model = crate::parakeet_engine::model::ParakeetModel::new(directory, true).unwrap();
+        let result = model.transcribe_samples(audio).unwrap();
+        println!("Parakeet final pass: {} ({}ms including model load)", result.text, started.elapsed().as_millis());
+        assert!(result.text.to_lowercase().contains("meeting"));
+        assert!(result.text.to_lowercase().contains("transcription"));
+    }
+}
 
 /// Audio data without device type (we only store mixed audio)
 #[derive(Clone)]
@@ -17,6 +97,7 @@ struct AudioData {
 /// Incremental audio saver that writes checkpoints every 30 seconds
 /// to minimize memory usage and enable crash recovery
 pub struct IncrementalAudioSaver {
+    original_wav: Option<OriginalWav>,
     checkpoint_buffer: Vec<AudioData>,
     checkpoint_interval_samples: usize,  // 30s at 48kHz = 1,440,000 samples
     checkpoint_count: u32,
@@ -40,6 +121,7 @@ impl IncrementalAudioSaver {
         }
 
         Ok(Self {
+            original_wav: if super::transcription::nemotron::is_two_stage() { Some(OriginalWav::create(meeting_folder.join("recording.wav"), sample_rate)?) } else { None },
             checkpoint_buffer: Vec::new(),
             checkpoint_interval_samples: sample_rate as usize * 30, // 30 seconds
             checkpoint_count: 0,
@@ -52,6 +134,10 @@ impl IncrementalAudioSaver {
     /// Add an audio chunk to the buffer
     /// Automatically saves a checkpoint when buffer reaches 30 seconds
     pub fn add_chunk(&mut self, chunk: AudioChunk) -> Result<()> {
+        if let Some(wav) = &mut self.original_wav {
+            if chunk.sample_rate != self.sample_rate { return Err(anyhow!("Original audio sample rate changed")); }
+            return wav.append(&chunk.data);
+        }
         let audio_data = AudioData {
             data: chunk.data,
             // sample_rate: chunk.sample_rate,
@@ -115,6 +201,11 @@ impl IncrementalAudioSaver {
     ///
     /// Returns the path to the final merged audio.mp4 file
     pub async fn finalize(&mut self) -> Result<PathBuf> {
+        if let Some(wav) = &mut self.original_wav {
+            if wav.bytes == 0 { return Err(anyhow!("No original audio was captured")); }
+            wav.file.sync_all()?;
+            return Ok(wav.path.clone());
+        }
         info!("Finalizing incremental recording...");
 
         // Save final buffer if not empty

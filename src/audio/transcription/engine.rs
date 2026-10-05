@@ -87,7 +87,24 @@ pub async fn validate_transcription_model_ready<R: Runtime>(app: &AppHandle<R>) 
     };
 
     // Validate based on provider
+    super::nemotron::set_two_stage(config.provider == "nemotron-parakeet");
     match config.provider.as_str() {
+        "nemotron-parakeet" => {
+            // Validate files, then capture immediately. The streaming worker queues audio
+            // while a cold recognizer loads, so the first spoken words are preserved.
+            super::nemotron::validate_local_files(app)?;
+            crate::parakeet_engine::commands::parakeet_init().await?;
+            if !crate::parakeet_engine::commands::parakeet_get_available_models().await?.iter().any(|model|
+                model.name == crate::config::DEFAULT_PARAKEET_MODEL && matches!(model.status, crate::parakeet_engine::ModelStatus::Available)) {
+                return Err("Download Parakeet in Settings > Transcription for the final transcript.".into());
+            }
+            Ok(())
+        }
+        "openrouter" => {
+            super::openrouter_provider::validate_settings(
+                config.api_key.as_deref().unwrap_or_default(), &config.model,
+            )
+        }
         "localWhisper" => {
             info!("🔍 Validating Whisper model...");
             // Ensure whisper engine is initialized first
@@ -184,6 +201,11 @@ pub async fn get_or_init_transcription_engine<R: Runtime>(
 
     // Initialize the appropriate engine based on provider
     match config.provider.as_str() {
+        "openrouter" => Ok(TranscriptionEngine::Provider(Arc::new(
+            super::openrouter_provider::OpenRouterProvider::new(
+                config.api_key.unwrap_or_default(), config.model,
+            )?,
+        ))),
         "parakeet" => {
             info!("🦜 Initializing Parakeet transcription engine");
 

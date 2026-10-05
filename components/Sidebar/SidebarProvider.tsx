@@ -32,6 +32,7 @@ interface SidebarContextType {
   sidebarItems: SidebarItem[];
   isCollapsed: boolean;
   toggleCollapse: () => void;
+  expandSidebar: () => void;
   meetings: CurrentMeeting[];
   setMeetings: (meetings: CurrentMeeting[]) => void;
   isMeetingActive: boolean;
@@ -65,7 +66,7 @@ export const useSidebar = () => {
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [currentMeeting, setCurrentMeeting] = useState<CurrentMeeting | null>({ id: 'intro-call', title: '+ New Call' });
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [meetings, setMeetings] = useState<CurrentMeeting[]>([]);
   const [sidebarItems, setSidebarItems] = useState<SidebarItem[]>([]);
   const [isMeetingActive, setIsMeetingActive] = useState(false);
@@ -91,11 +92,11 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
           title: meeting.title
         }));
         setMeetings(transformedMeetings);
-        
+
       } catch (error) {
         console.error('Error fetching meetings:', error);
         setMeetings([]);
-        
+
       }
     }
   }, [serverAddress]);
@@ -115,7 +116,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const baseItems: SidebarItem[] = [
     {
       id: 'meetings',
-      title: 'Meeting Notes',
+      title: 'Meeting notes',
       type: 'folder' as const,
       children: [
         ...meetings.map(meeting => ({ id: meeting.id, title: meeting.title, type: 'file' as const }))
@@ -125,8 +126,10 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
 
   const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
+    setIsCollapsed(previous => !previous);
   };
+
+  const expandSidebar = () => setIsCollapsed(false);
 
   // Update current meeting when on home page
   useEffect(() => {
@@ -157,7 +160,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       }
 
       // Track recording initiation from sidebar
-      
+
     }
     // The actual recording start/stop is handled in the Home component
   };
@@ -295,6 +298,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
       sidebarItems,
       isCollapsed,
       toggleCollapse,
+      expandSidebar,
       meetings,
       setMeetings,
       isMeetingActive,

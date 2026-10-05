@@ -45,8 +45,8 @@ export function SetupOverviewStep() {
 
   return (
     <OnboardingContainer
-      title="Setup Overview"
-      description="Meeting Workspace requires that you download the Transcription & Summarization AI models for the software to work."
+      title="Set up local models"
+      description="Download a speech model and a summary model."
       step={2}
       totalSteps={isMac ? 4 : 3}
     >
@@ -94,7 +94,7 @@ export function SetupOverviewStep() {
             onClick={handleContinue}
             className="w-full h-11 bg-gray-900 hover:bg-gray-800 text-white"
           >
-            Let's Go
+            Continue
           </Button>
         </div>
       </div>

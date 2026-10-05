@@ -23,7 +23,7 @@ export function BetaSettings() {
         <div className="text-sm text-yellow-800">
           <p className="font-medium">Beta Features</p>
           <p className="mt-1">
-            These features are still being tested. You may encounter issues, and we appreciate your feedback.
+            These features are in testing.
           </p>
         </div>
       </div>
@@ -52,6 +52,7 @@ export function BetaSettings() {
 
             <div className="ml-6">
               <Switch
+                aria-label={BETA_FEATURE_NAMES[featureKey]}
                 checked={betaFeatures[featureKey]}
                 onCheckedChange={(checked) => toggleBetaFeature(featureKey, checked)}
               />
@@ -63,7 +64,7 @@ export function BetaSettings() {
       {/* Info Box */}
       <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
         <p className="text-sm text-blue-800">
-          <strong>Note:</strong> When disabled, beta features will be hidden. Your existing meetings remain unaffected.
+          Disable a feature to hide its controls. Saved meetings do not change.
         </p>
       </div>
     </div>

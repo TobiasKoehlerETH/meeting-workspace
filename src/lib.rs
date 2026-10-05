@@ -382,7 +382,7 @@ async fn set_language_preference(language: String) -> Result<(), String> {
 
 // Internal helper function to get language preference (for use within Rust code)
 pub fn get_language_preference_internal() -> Option<String> {
-    LANGUAGE_PREFERENCE.lock().ok().map(|lang| lang.clone())
+    LANGUAGE_PREFERENCE.lock().ok().map(|lang| crate::config::normalize_spoken_language(&lang).to_owned())
 }
 
 pub fn run() {
@@ -615,6 +615,7 @@ pub fn run() {
             api::api_get_transcript_config,
             api::api_save_transcript_config,
             api::api_get_transcript_api_key,
+            audio::transcription::openrouter_provider::get_openrouter_transcription_models,
             api::api_delete_meeting,
             api::api_get_meeting,
             api::api_get_meeting_metadata,
@@ -645,6 +646,7 @@ pub fn run() {
             summary::template_commands::api_validate_template,
             // Built-in AI commands
             summary::summary_engine::commands::builtin_ai_list_models,
+            summary::summary_engine::commands::builtin_ai_get_models_directory,
             summary::summary_engine::commands::builtin_ai_get_model_info,
             summary::summary_engine::commands::builtin_ai_download_model,
             summary::summary_engine::commands::builtin_ai_cancel_download,
@@ -664,6 +666,10 @@ pub fn run() {
             audio::recording_preferences::get_audio_backend_info,
             // Language preference commands
             set_language_preference,
+            audio::recording_commands::prepare_recording,
+            audio::transcription::nemotron::finalize_local_transcript,
+            audio::transcription::nemotron::get_local_pipeline_status,
+            audio::transcription::nemotron::download_nemotron_model,
             // Notification system commands
             notifications::commands::get_notification_settings,
             notifications::commands::set_notification_settings,

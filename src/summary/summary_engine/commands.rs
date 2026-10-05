@@ -67,6 +67,14 @@ pub async fn init_model_manager<R: Runtime>(app: &AppHandle<R>) -> anyhow::Resul
 // Tauri Commands
 // ============================================================================
 
+#[tauri::command]
+pub async fn builtin_ai_get_models_directory<R: Runtime>(app: AppHandle<R>) -> Result<String, String> {
+    app.path()
+        .app_data_dir()
+        .map(|directory| directory.join("models").join("summary").to_string_lossy().into_owned())
+        .map_err(|error| format!("Cannot find the model directory: {}", error))
+}
+
 /// List all available built-in AI models with their status
 #[tauri::command]
 pub async fn builtin_ai_list_models<R: Runtime>(

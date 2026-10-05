@@ -7,6 +7,7 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { useConfig } from "@/contexts/ConfigContext";
 import { useRecordingState } from "@/contexts/RecordingStateContext";
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 
 type modalType = "modelSettings" | "deviceSettings" | "languageSettings" | "modelSelector" | "errorAlert" | "chunkDropWarning";
 
@@ -167,18 +168,10 @@ export function SettingsModals({
 
     {/* Device Settings Modal */}
     {modals.deviceSettings && (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+      <Dialog open onOpenChange={open => { if (!open) onClose('deviceSettings'); }}>
+        <DialogContent className="max-w-md" aria-describedby={undefined}>
           <div className="flex justify-between items-center mb-4">
-            <h3 className="text-lg font-semibold text-gray-900">Audio Device Settings</h3>
-            <button
-              onClick={() => onClose('deviceSettings')}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            <DialogTitle>Audio devices</DialogTitle>
           </div>
 
           <DeviceSelection
@@ -190,11 +183,7 @@ export function SettingsModals({
           <div className="mt-6 flex justify-end">
             <button
               onClick={() => {
-                const micDevice = selectedDevices.micDevice || 'Default';
-                const systemDevice = selectedDevices.systemDevice || 'Default';
-                toast.success("Devices selected", {
-                  description: `Microphone: ${micDevice}, System Audio: ${systemDevice}`
-                });
+                toast.success('Audio devices selected');
                 onClose('deviceSettings');
               }}
               className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -202,8 +191,8 @@ export function SettingsModals({
               Done
             </button>
           </div>
-        </div>
-      </div>
+        </DialogContent>
+      </Dialog>
     )}
 
     {/* Language Settings Modal */}

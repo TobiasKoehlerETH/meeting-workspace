@@ -1,16 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { toast } from 'sonner';
+import { Eye, EyeOff } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
 import { Label } from './ui/label';
-import { Eye, EyeOff, Lock, Unlock } from 'lucide-react';
 import { ModelManager } from './WhisperModelManager';
 import { ParakeetModelManager } from './ParakeetModelManager';
-
+import { useRecordingState } from '@/contexts/RecordingStateContext';
+import { useConfig } from '@/contexts/ConfigContext';
+import { LanguageSelection } from './LanguageSelection';
 
 export interface TranscriptModelProps {
-    provider: 'localWhisper' | 'parakeet' | 'deepgram' | 'elevenLabs' | 'groq' | 'openai';
+    provider: 'localWhisper' | 'parakeet' | 'nemotron-parakeet' | 'openrouter' | 'deepgram' | 'elevenLabs' | 'groq' | 'openai';
     model: string;
     apiKey?: string | null;
 }
@@ -21,208 +24,135 @@ export interface TranscriptSettingsProps {
     onModelSelect?: () => void;
 }
 
+const DEFAULT_API_MODEL = 'openai/whisper-large-v3-turbo';
+const FALLBACK_MODELS = [
+    { id: DEFAULT_API_MODEL, name: 'Whisper Large V3 Turbo · Fast, low cost' },
+    { id: 'openai/gpt-4o-mini-transcribe', name: 'GPT-4o Mini Transcribe' },
+    { id: 'openai/gpt-4o-transcribe', name: 'GPT-4o Transcribe' },
+];
+
 export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelConfig, onModelSelect }: TranscriptSettingsProps) {
-    const [apiKey, setApiKey] = useState<string | null>(transcriptModelConfig.apiKey || null);
-    const [showApiKey, setShowApiKey] = useState<boolean>(false);
-    const [isApiKeyLocked, setIsApiKeyLocked] = useState<boolean>(true);
-    const [isLockButtonVibrating, setIsLockButtonVibrating] = useState<boolean>(false);
-    const [uiProvider, setUiProvider] = useState<TranscriptModelProps['provider']>(transcriptModelConfig.provider);
-
-    // Sync uiProvider when backend config changes (e.g., after model selection or initial load)
-    useEffect(() => {
-        setUiProvider(transcriptModelConfig.provider);
-    }, [transcriptModelConfig.provider]);
-
-    useEffect(() => {
-        if (transcriptModelConfig.provider === 'localWhisper' || transcriptModelConfig.provider === 'parakeet') {
-            setApiKey(null);
-        }
-    }, [transcriptModelConfig.provider]);
-
-    const fetchApiKey = async (provider: string) => {
+    const { isRecording } = useRecordingState();
+    const { selectedLanguage, setSelectedLanguage } = useConfig();
+    const [provider, setProvider] = useState(transcriptModelConfig.provider);
+    const [model, setModel] = useState(transcriptModelConfig.provider === 'openrouter' ? transcriptModelConfig.model : DEFAULT_API_MODEL);
+    const [apiKey, setApiKey] = useState('');
+    const [showApiKey, setShowApiKey] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isLoadingKey, setIsLoadingKey] = useState(false);
+    const [models, setModels] = useState(FALLBACK_MODELS);
+    const [pipelineReady, setPipelineReady] = useState({ nemotron: false, parakeet: false });
+    const [downloading, setDownloading] = useState(false);
+    const refreshPipeline = () => invoke<typeof pipelineReady>('get_local_pipeline_status').then(setPipelineReady);
+    useEffect(() => { if (provider === 'nemotron-parakeet') void refreshPipeline().catch(() => toast.error('Cannot check local models.')); }, [provider]);
+    const setupPipeline = async () => {
+        setDownloading(true);
         try {
-
-            const data = await invoke('api_get_transcript_api_key', { provider }) as string;
-
-            setApiKey(data || '');
-        } catch (err) {
-            console.error('Error fetching API key:', err);
-            setApiKey(null);
-        }
+            if (!pipelineReady.nemotron) await invoke('download_nemotron_model');
+            if (!pipelineReady.parakeet) await invoke('parakeet_download_model', { modelName: 'parakeet-tdt-0.6b-v3-int8' });
+            await refreshPipeline();
+            toast.success('Local models downloaded.');
+        } catch (error) { toast.error('Model download failed.', { description: String(error) }); }
+        finally { setDownloading(false); }
     };
-    const modelOptions = {
-        localWhisper: [], // Model selection handled by ModelManager component
-        parakeet: [], // Model selection handled by ParakeetModelManager component
-        deepgram: ['nova-2-phonecall'],
-        elevenLabs: ['eleven_multilingual_v2'],
-        groq: ['llama-3.3-70b-versatile'],
-        openai: ['gpt-4o'],
-    };
-    const requiresApiKey = transcriptModelConfig.provider === 'deepgram' || transcriptModelConfig.provider === 'elevenLabs' || transcriptModelConfig.provider === 'openai' || transcriptModelConfig.provider === 'groq';
-
-    const handleInputClick = () => {
-        if (isApiKeyLocked) {
-            setIsLockButtonVibrating(true);
-            setTimeout(() => setIsLockButtonVibrating(false), 500);
-        }
+    const savePipeline = async () => {
+        setIsSaving(true);
+        try {
+            const config: TranscriptModelProps = { provider: 'nemotron-parakeet', model: 'nemotron-3.5-streaming-int8', apiKey: null };
+            await invoke('api_save_transcript_config', { ...config });
+            setTranscriptModelConfig(config);
+            window.dispatchEvent(new CustomEvent('transcript-config-updated'));
+            toast.success('Local two-stage transcription enabled.');
+        } catch (error) { toast.error('Cannot save transcription.', { description: String(error) }); }
+        finally { setIsSaving(false); }
     };
 
-    const handleWhisperModelSelect = (modelName: string) => {
-        // Always update config when model is selected, regardless of current provider
-        // This ensures the model is set when user switches back
-        setTranscriptModelConfig({
-            ...transcriptModelConfig,
-            provider: 'localWhisper', // Ensure provider is set correctly
-            model: modelName
-        });
-        // Close modal after selection
-        if (onModelSelect) {
-            onModelSelect();
-        }
+    useEffect(() => {
+        setProvider(transcriptModelConfig.provider);
+        if (transcriptModelConfig.provider === 'openrouter') setModel(transcriptModelConfig.model);
+    }, [transcriptModelConfig.provider, transcriptModelConfig.model]);
+
+    useEffect(() => {
+        if (provider !== 'openrouter') return;
+        let cancelled = false;
+        setIsLoadingKey(true);
+        invoke<string>('api_get_transcript_api_key', { provider: 'openrouter' })
+            .then(key => { if (!cancelled) setApiKey(key || ''); })
+            .catch(() => { if (!cancelled) toast.error('Cannot load the saved API key.'); })
+            .finally(() => { if (!cancelled) setIsLoadingKey(false); });
+        invoke<typeof FALLBACK_MODELS>('get_openrouter_transcription_models')
+            .then(list => { if (!cancelled && list.length) setModels(list); })
+            .catch(() => { /* Keep built-in speech models when the catalog is offline. */ });
+        return () => { cancelled = true; };
+    }, [provider]);
+
+    const selectLocalModel = (localProvider: 'localWhisper' | 'parakeet', modelName: string) => {
+        setTranscriptModelConfig({ provider: localProvider, model: modelName, apiKey: null });
+        window.dispatchEvent(new CustomEvent('transcript-config-updated'));
+        onModelSelect?.();
     };
 
-    const handleParakeetModelSelect = (modelName: string) => {
-        // Always update config when model is selected, regardless of current provider
-        // This ensures the model is set when user switches back
-        setTranscriptModelConfig({
-            ...transcriptModelConfig,
-            provider: 'parakeet', // Ensure provider is set correctly
-            model: modelName
-        });
-        // Close modal after selection
-        if (onModelSelect) {
-            onModelSelect();
-        }
+    const saveApiSettings = async () => {
+        setIsSaving(true);
+        try {
+            const config: TranscriptModelProps = { provider: 'openrouter', model, apiKey: apiKey.trim() };
+            await invoke('api_save_transcript_config', { ...config });
+            setTranscriptModelConfig(config);
+            window.dispatchEvent(new CustomEvent('transcript-config-updated'));
+            toast.success('API transcription saved.');
+            onModelSelect?.();
+        } catch (error) {
+            toast.error('Cannot save API transcription.', { description: String(error) });
+        } finally { setIsSaving(false); }
     };
+
+    const modelOptions = models.some(item => item.id === model) ? models : [{ id: model, name: model }, ...models];
 
     return (
-        <div>
+        <div className="space-y-4 pb-6">
             <div>
-                {/* <div className="flex justify-between items-center mb-4">
-                    <h3 className="text-lg font-semibold text-gray-900">Transcript Settings</h3>
-                </div> */}
-                <div className="space-y-4 pb-6">
-                    <div>
-                        <Label className="block text-sm font-medium text-gray-700 mb-1">
-                            Transcript Model
-                        </Label>
-                        <div className="flex space-x-2 mx-1">
-                            <Select
-                                value={uiProvider}
-                                onValueChange={(value) => {
-                                    const provider = value as TranscriptModelProps['provider'];
-                                    setUiProvider(provider);
-                                    if (provider !== 'localWhisper' && provider !== 'parakeet') {
-                                        fetchApiKey(provider);
-                                    }
-                                }}
-                            >
-                                <SelectTrigger className='focus:ring-1 focus:ring-blue-500 focus:border-blue-500'>
-                                    <SelectValue placeholder="Select provider" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="parakeet">⚡ Parakeet (Recommended - Real-time / Accurate)</SelectItem>
-                                    <SelectItem value="localWhisper">🏠 Local Whisper (High Accuracy)</SelectItem>
-                                    {/* <SelectItem value="deepgram">☁️ Deepgram (Backup)</SelectItem>
-                                    <SelectItem value="elevenLabs">☁️ ElevenLabs</SelectItem>
-                                    <SelectItem value="groq">☁️ Groq</SelectItem>
-                                    <SelectItem value="openai">☁️ OpenAI</SelectItem> */}
-                                </SelectContent>
-                            </Select>
-
-                            {uiProvider !== 'localWhisper' && uiProvider !== 'parakeet' && (
-                                <Select
-                                    value={transcriptModelConfig.model}
-                                    onValueChange={(value) => {
-                                        const model = value as TranscriptModelProps['model'];
-                                        setTranscriptModelConfig({ ...transcriptModelConfig, provider: uiProvider, model });
-                                    }}
-                                >
-                                    <SelectTrigger className='focus:ring-1 focus:ring-blue-500 focus:border-blue-500'>
-                                        <SelectValue placeholder="Select model" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {modelOptions[uiProvider].map((model) => (
-                                            <SelectItem key={model} value={model}>{model}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
-
-                        </div>
-                    </div>
-
-                    {uiProvider === 'localWhisper' && (
-                        <div className="mt-6">
-                            <ModelManager
-                                selectedModel={transcriptModelConfig.provider === 'localWhisper' ? transcriptModelConfig.model : undefined}
-                                onModelSelect={handleWhisperModelSelect}
-                                autoSave={true}
-                            />
-                        </div>
-                    )}
-
-                    {uiProvider === 'parakeet' && (
-                        <div className="mt-6">
-                            <ParakeetModelManager
-                                selectedModel={transcriptModelConfig.provider === 'parakeet' ? transcriptModelConfig.model : undefined}
-                                onModelSelect={handleParakeetModelSelect}
-                                autoSave={true}
-                            />
-                        </div>
-                    )}
-
-
-                    {requiresApiKey && (
-                        <div>
-                            <Label className="block text-sm font-medium text-gray-700 mb-1">
-                                API Key
-                            </Label>
-                            <div className="relative mx-1">
-                                <Input
-                                    type={showApiKey ? "text" : "password"}
-                                    className={`pr-24 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 ${isApiKeyLocked ? 'bg-gray-100 cursor-not-allowed' : ''
-                                        }`}
-                                    value={apiKey || ''}
-                                    onChange={(e) => setApiKey(e.target.value)}
-                                    disabled={isApiKeyLocked}
-                                    onClick={handleInputClick}
-                                    placeholder="Enter your API key"
-                                />
-                                {isApiKeyLocked && (
-                                    <div
-                                        onClick={handleInputClick}
-                                        className="absolute inset-0 flex items-center justify-center bg-gray-100 bg-opacity-50 rounded-md cursor-not-allowed"
-                                    />
-                                )}
-                                <div className="absolute inset-y-0 right-0 pr-1 flex items-center">
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setIsApiKeyLocked(!isApiKeyLocked)}
-                                        className={`transition-colors duration-200 ${isLockButtonVibrating ? 'animate-vibrate text-red-500' : ''
-                                            }`}
-                                        title={isApiKeyLocked ? "Unlock to edit" : "Lock to prevent editing"}
-                                    >
-                                        {isApiKeyLocked ? <Lock className="h-4 w-4" /> : <Unlock className="h-4 w-4" />}
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="icon"
-                                        onClick={() => setShowApiKey(!showApiKey)}
-                                    >
-                                        {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                                    </Button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
+                <Label htmlFor="transcription-provider">Transcription</Label>
+                <Select value={provider} onValueChange={value => setProvider(value as TranscriptModelProps['provider'])} disabled={isRecording || isSaving}>
+                    <SelectTrigger id="transcription-provider" className="mt-2"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="nemotron-parakeet">Local · Nemotron live + Parakeet final</SelectItem>
+                        <SelectItem value="parakeet">Local · Parakeet</SelectItem>
+                        <SelectItem value="localWhisper">Local · Whisper</SelectItem>
+                        <SelectItem value="openrouter">API · OpenRouter</SelectItem>
+                    </SelectContent>
+                </Select>
             </div>
-        </div >
-    )
+            <LanguageSelection selectedLanguage={selectedLanguage} onLanguageChange={setSelectedLanguage} disabled={isRecording || isSaving} provider={provider} />
+            {provider === 'nemotron-parakeet' && <div className="space-y-3">
+                <p className="text-sm">During meeting: Nemotron live transcript.<br />After Stop: Parakeet final transcript.</p>
+                <p className="text-xs text-gray-600">Microphone audio is saved as lossless recording.wav. Live and final transcripts are kept separately. Both models run on this PC.</p>
+                <p className="text-sm">Nemotron: {pipelineReady.nemotron ? 'Ready' : 'Download required'} · Parakeet: {pipelineReady.parakeet ? 'Ready' : 'Download required'}</p>
+                {(!pipelineReady.nemotron || !pipelineReady.parakeet) && <Button type="button" onClick={setupPipeline} disabled={downloading || isRecording}>{downloading ? 'Downloading models…' : 'Download local models'}</Button>}
+                <Button type="button" onClick={savePipeline} disabled={isRecording || isSaving || downloading || !pipelineReady.nemotron || !pipelineReady.parakeet}>{isSaving ? 'Saving…' : 'Use local two-stage transcription'}</Button>
+            </div>}
+            {provider === 'localWhisper' && <ModelManager selectedModel={transcriptModelConfig.provider === 'localWhisper' ? transcriptModelConfig.model : undefined} onModelSelect={name => selectLocalModel('localWhisper', name)} autoSave />}
+            {provider === 'parakeet' && <ParakeetModelManager selectedModel={transcriptModelConfig.provider === 'parakeet' ? transcriptModelConfig.model : undefined} onModelSelect={name => selectLocalModel('parakeet', name)} autoSave />}
+            {provider === 'openrouter' && <>
+                <p className="text-sm text-gray-600">Sends audio to OpenRouter. Internet and API credit required.</p>
+                <div>
+                    <Label htmlFor="transcription-api-model">Speech model</Label>
+                    <Select value={model} onValueChange={setModel} disabled={isRecording || isSaving}>
+                        <SelectTrigger id="transcription-api-model" className="mt-2"><SelectValue /></SelectTrigger>
+                        <SelectContent>{modelOptions.map(item => <SelectItem key={item.id} value={item.id}>{item.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                </div>
+                <div>
+                    <Label htmlFor="transcription-api-key">API key</Label>
+                    <div className="mt-2 flex gap-2">
+                        <Input id="transcription-api-key" type={showApiKey ? 'text' : 'password'} value={apiKey} onChange={event => setApiKey(event.target.value)} placeholder="OpenRouter API key" autoComplete="off" spellCheck={false} disabled={isLoadingKey || isRecording || isSaving} />
+                        <Button type="button" variant="outline" size="icon" aria-label={showApiKey ? 'Hide API key' : 'Show API key'} aria-pressed={showApiKey} onClick={() => setShowApiKey(previous => !previous)}>{showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</Button>
+                    </div>
+                </div>
+                <Button type="button" onClick={saveApiSettings} disabled={isRecording || isSaving || isLoadingKey || !apiKey.trim() || !model}>{isSaving ? 'Saving…' : 'Save API settings'}</Button>
+            </>}
+            {isRecording && <p className="text-sm text-gray-600">Stop recording to change transcription.</p>}
+        </div>
+    );
 }
 
 

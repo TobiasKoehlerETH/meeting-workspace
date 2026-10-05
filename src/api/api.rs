@@ -1,7 +1,7 @@
 use log::{debug as log_debug, error as log_error, info as log_info, warn as log_warn};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use tauri::{AppHandle, Runtime};
+use tauri::{AppHandle, Manager, Runtime};
 use tauri_plugin_store::StoreExt;
 
 use crate::{
@@ -572,7 +572,7 @@ pub async fn api_save_model_config<R: Runtime>(
 
 #[tauri::command]
 pub async fn api_get_api_key<R: Runtime>(
-    _app: AppHandle<R>,
+    app: AppHandle<R>,
     state: tauri::State<'_, AppState>,
     provider: String,
     _auth_token: Option<String>,
@@ -583,6 +583,9 @@ pub async fn api_get_api_key<R: Runtime>(
     );
     match SettingsRepository::get_api_key(&state.db_manager.pool(), &provider).await {
         Ok(key) => {
+            if provider == "openrouter" && key.as_ref().map_or(true, |key| key.trim().is_empty()) {
+                return Ok(resolve_transcript_api_key(&app, state.db_manager.pool(), "openrouter").await?.unwrap_or_default());
+            }
             log_info!(
                 "Successfully retrieved API key for provider '{}'.",
                 &provider
@@ -598,7 +601,7 @@ pub async fn api_get_api_key<R: Runtime>(
 
 #[tauri::command]
 pub async fn api_get_transcript_config<R: Runtime>(
-    _app: AppHandle<R>,
+    app: AppHandle<R>,
     state: tauri::State<'_, AppState>,
     _auth_token: Option<String>,
 ) -> Result<Option<TranscriptConfig>, String> {
@@ -612,7 +615,7 @@ pub async fn api_get_transcript_config<R: Runtime>(
                 &config.provider,
                 &config.model
             );
-            match SettingsRepository::get_transcript_api_key(pool, &config.provider).await {
+            match resolve_transcript_api_key(&app, pool, &config.provider).await {
                 Ok(api_key) => {
                     log_info!("Successfully retrieved transcript config and API key.");
                     Ok(Some(TranscriptConfig {
@@ -646,9 +649,31 @@ pub async fn api_get_transcript_config<R: Runtime>(
     }
 }
 
+// Personal defaults stay in the app data directory, outside source and distributable binaries.
+async fn resolve_transcript_api_key<R: Runtime>(
+    app: &AppHandle<R>, pool: &sqlx::SqlitePool, provider: &str,
+) -> Result<Option<String>, String> {
+    let saved = SettingsRepository::get_transcript_api_key(pool, provider).await
+        .map_err(|error| error.to_string())?;
+    if saved.as_ref().is_some_and(|key| !key.trim().is_empty()) || provider != "openrouter" {
+        return Ok(saved);
+    }
+    let path = app.path().app_data_dir().map_err(|error| error.to_string())?
+        .join("transcription-defaults.json");
+    let data = match tokio::fs::read(path).await {
+        Ok(data) => data,
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(_) => return Err("Cannot read the local transcription settings.".into()),
+    };
+    let defaults: serde_json::Value = serde_json::from_slice(&data)
+        .map_err(|_| "The local transcription settings are invalid.".to_string())?;
+    Ok(defaults.get("apiKey").and_then(|value| value.as_str())
+        .filter(|key| !key.trim().is_empty()).map(|key| key.trim().to_owned()))
+}
+
 #[tauri::command]
 pub async fn api_save_transcript_config<R: Runtime>(
-    _app: AppHandle<R>,
+    app: AppHandle<R>,
     state: tauri::State<'_, AppState>,
     provider: String,
     model: String,
@@ -660,6 +685,21 @@ pub async fn api_save_transcript_config<R: Runtime>(
         &provider
     );
     let pool = state.db_manager.pool();
+
+    if !matches!(provider.as_str(), "parakeet" | "localWhisper" | "openrouter" | "nemotron-parakeet") || model.trim().is_empty() {
+        return Err("Select a supported transcription provider and model.".into());
+    }
+    if provider == "openrouter" {
+        let key = match api_key.filter(|key| !key.trim().is_empty()) {
+            Some(key) => key.trim().to_owned(),
+            None => resolve_transcript_api_key(&app, pool, &provider).await?.unwrap_or_default(),
+        };
+        crate::audio::transcription::openrouter_provider::validate_settings(&key, &model)?;
+        // Save the provider, model and key together so a failed save cannot select an unusable provider.
+        sqlx::query("INSERT INTO transcript_settings (id, provider, model, openRouterApiKey) VALUES ('1', 'openrouter', $1, $2) ON CONFLICT(id) DO UPDATE SET provider = excluded.provider, model = excluded.model, openRouterApiKey = excluded.openRouterApiKey")
+            .bind(model.trim()).bind(key).execute(pool).await.map_err(|error| error.to_string())?;
+        return Ok(serde_json::json!({ "status": "success" }));
+    }
 
     if let Err(e) = SettingsRepository::save_transcript_config(pool, &provider, &model).await {
         log_error!("Failed to save transcript config: {}", e);
@@ -685,7 +725,7 @@ pub async fn api_save_transcript_config<R: Runtime>(
 
 #[tauri::command]
 pub async fn api_get_transcript_api_key<R: Runtime>(
-    _app: AppHandle<R>,
+    app: AppHandle<R>,
     state: tauri::State<'_, AppState>,
     provider: String,
     _auth_token: Option<String>,
@@ -694,7 +734,7 @@ pub async fn api_get_transcript_api_key<R: Runtime>(
         "api_get_transcript_api_key called (native) for provider '{}'",
         &provider
     );
-    match SettingsRepository::get_transcript_api_key(&state.db_manager.pool(), &provider).await {
+    match resolve_transcript_api_key(&app, state.db_manager.pool(), &provider).await {
         Ok(key) => {
             log_info!(
                 "Successfully retrieved transcript API key for provider '{}'.",

@@ -371,10 +371,8 @@ export const TranscriptView: React.FC<TranscriptViewProps> = ({ transcripts, isR
           ) : (
             <>
               <div className="ap-empty-state">
-                <span className="ap-eyebrow">Your meeting workspace</span>
-                <h1>Make room for<br />the conversation.</h1>
-                <p>Record your meeting. Keep the transcript, notes, and summary together.</p>
-                <span className="ap-empty-note">Start recording to see live transcription.</span>
+                <h1>Record a meeting</h1>
+                <p>Choose audio devices. Start recording.</p>
               </div>
             </>
           )}

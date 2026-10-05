@@ -47,6 +47,10 @@ pub fn start_transcription_task<R: Runtime>(
     transcription_receiver: tokio::sync::mpsc::UnboundedReceiver<AudioChunk>,
 ) -> tokio::task::JoinHandle<()> {
     tokio::spawn(async move {
+        if super::nemotron::is_two_stage() {
+            super::nemotron::run(app, transcription_receiver).await;
+            return;
+        }
         info!("🚀 Starting optimized parallel transcription task - guaranteeing zero chunk loss");
 
         // Initialize transcription engine (Whisper or Parakeet based on config)

@@ -9,7 +9,8 @@ import { useRecordingState } from '@/contexts/RecordingStateContext';
 import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { ModalType } from '@/hooks/useModalState';
 import { useIsLinux } from '@/hooks/usePlatform';
-import { useMemo } from 'react';
+import { useMemo, useEffect, useState } from 'react';
+import { listen } from '@tauri-apps/api/event';
 
 /**
  * TranscriptPanel Component
@@ -31,9 +32,26 @@ export function TranscriptPanel({
   showModal
 }: TranscriptPanelProps) {
   // Contexts
-  const { transcripts, transcriptContainerRef, copyTranscript } = useTranscripts();
+  const { transcripts, copyTranscript } = useTranscripts();
   const { transcriptModelConfig } = useConfig();
   const { isRecording, isPaused } = useRecordingState();
+  const [livePartial, setLivePartial] = useState('');
+  const [liveStatus, setLiveStatus] = useState('');
+  useEffect(() => {
+    let closed = false;
+    let cleanup: (() => void) | undefined;
+    listen<string>('nemotron-status', event => setLiveStatus(event.payload))
+      .then(unlisten => { if (closed) unlisten(); else cleanup = unlisten; });
+    return () => { closed = true; cleanup?.(); };
+  }, []);
+  useEffect(() => {
+    let closed = false;
+    let cleanup: (() => void) | undefined;
+    listen<{text: string; final: boolean}>('nemotron-partial', event => setLivePartial(event.payload.final ? '' : event.payload.text))
+      .then(unlisten => { if (closed) unlisten(); else cleanup = unlisten; });
+    return () => { closed = true; cleanup?.(); };
+  }, []);
+  useEffect(() => { if (!isRecording) { setLivePartial(''); setLiveStatus(''); } }, [isRecording]);
   const { checkPermissions, isChecking, hasSystemAudio, hasMicrophone } = usePermissionCheck();
   const isLinux = useIsLinux();
 
@@ -50,7 +68,7 @@ export function TranscriptPanel({
   );
 
   return (
-    <div ref={transcriptContainerRef} className="w-full bg-white flex flex-col overflow-y-auto">
+    <div className="w-full bg-white flex flex-col overflow-y-auto">
       {/* Title area - Sticky header */}
       <div className="sticky top-0 z-10 bg-white p-4 border-gray-200">
         <div className="flex flex-col space-y-3">
@@ -114,6 +132,8 @@ export function TranscriptPanel({
               enableStreaming={isRecording}
               showConfidence={true}
             />
+            {isRecording && livePartial && <p role="status" aria-live="polite" className="px-4 py-3 text-gray-600">{livePartial}</p>}
+            {isRecording && liveStatus && <p role="status" className="px-4 py-2 text-sm text-gray-500">{liveStatus}</p>}
           </div>
         </div>
       </div>

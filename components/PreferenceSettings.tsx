@@ -34,11 +34,11 @@ export function PreferenceSettings() {
     const trackPreferencesViewed = async () => {
       // Wait for notification settings to be available (either from cache or after loading)
       if (notificationSettings) {
-        
+
         hasTrackedViewRef.current = true;
       } else if (!isLoadingPreferences) {
         // If not loading and no settings available, track with default value
-        
+
         hasTrackedViewRef.current = true;
       }
     };
@@ -93,7 +93,7 @@ export function PreferenceSettings() {
         console.log("Successfully updated notification settings to:", notificationsEnabled);
 
         // Track notification preference change - only fires when user manually toggles
-        
+
       } catch (error) {
         console.error('Failed to update notification settings:', error);
       }
@@ -117,7 +117,7 @@ export function PreferenceSettings() {
       }
 
       // Track storage folder access
-      
+
     } catch (error) {
       console.error(`Failed to open ${folderType} folder:`, error);
     }
@@ -143,17 +143,17 @@ export function PreferenceSettings() {
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Notifications</h3>
-            <p className="text-sm text-gray-600">Enable or disable notifications of start and end of meeting</p>
+            <p className="text-sm text-gray-600">Notify when recording starts or stops.</p>
           </div>
-          <Switch checked={notificationsEnabledValue} onCheckedChange={setNotificationsEnabled} />
+          <Switch aria-label="Recording notifications" checked={notificationsEnabledValue} onCheckedChange={setNotificationsEnabled} />
         </div>
       </div>
 
       {/* Data Storage Locations Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-        <h3 className="text-lg font-semibold text-gray-900 mb-4">Data Storage Locations</h3>
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">File locations</h3>
         <p className="text-sm text-gray-600 mb-6">
-          View and access where Meeting Workspace stores your data
+          Open your saved files.
         </p>
 
         <div className="space-y-4">
@@ -189,7 +189,7 @@ export function PreferenceSettings() {
 
           {/* Recordings Location */}
           <div className="p-4 border rounded-lg bg-gray-50">
-            <div className="font-medium mb-2">Meeting Recordings</div>
+            <div className="font-medium mb-2">Recordings</div>
             <div className="text-sm text-gray-600 mb-3 break-all font-mono text-xs">
               {storageLocations?.recordings || 'Loading...'}
             </div>
@@ -198,14 +198,14 @@ export function PreferenceSettings() {
               className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
             >
               <FolderOpen className="w-4 h-4" />
-              Open Folder
+              Open folder
             </button>
           </div>
         </div>
 
         <div className="mt-4 p-3 bg-blue-50 rounded-md">
           <p className="text-xs text-blue-800">
-            <strong>Note:</strong> Database and models are stored together in your application data directory for unified management.
+            Files and models are stored in your application data folder.
           </p>
         </div>
       </div>

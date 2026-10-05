@@ -7,6 +7,7 @@ import { useSidebar } from '@/components/Sidebar/SidebarProvider';
 import { useRecordingState, RecordingStatus } from '@/contexts/RecordingStateContext';
 import { storageService } from '@/services/storageService';
 import { transcriptService } from '@/services/transcriptService';
+import { invoke } from '@tauri-apps/api/core';
 import {
   applyPinnedSummaryLanguageToMeeting,
   detectAndCacheSummaryLanguage,
@@ -264,6 +265,22 @@ export function useRecordingStop(
             throw new Error('No meeting ID received from save operation');
           }
 
+          if (folderPath) {
+            const config = await invoke<{provider: string}>('api_get_transcript_config');
+            if (config.provider === 'nemotron-parakeet') {
+              sessionStorage.setItem('last_transcription_stage', 'finalizing');
+              setStatus(RecordingStatus.PROCESSING_TRANSCRIPTS, 'Parakeet: creating final transcript…');
+              try {
+                await invoke('finalize_local_transcript', { meetingId, meetingFolderPath: folderPath });
+                sessionStorage.setItem('last_transcription_stage', 'final');
+                toast.success('Final Parakeet transcript saved.');
+              } catch (error) {
+                sessionStorage.setItem('last_transcription_stage', 'live');
+                toast.warning('Final transcription failed. Live transcript and audio are saved.', { description: String(error), duration: 10000 });
+              }
+            }
+          }
+
           let shouldDetectSummaryLanguage = false;
           try {
             shouldDetectSummaryLanguage = !(await applyPinnedSummaryLanguageToMeeting(meetingId));
@@ -323,7 +340,7 @@ export function useRecordingStop(
 
           // Show success toast with navigation option
           toast.success('Recording saved successfully!', {
-            description: `${freshTranscripts.length} transcript segments saved.`,
+            description: sessionStorage.getItem('last_transcription_stage') === 'final' ? 'Final transcript and original audio saved.' : `${freshTranscripts.length} live transcript segments saved.`,
             action: {
               label: 'View Meeting',
               onClick: () => {

@@ -73,7 +73,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
     await savePreferences(newPreferences);
 
     // Track auto-save setting change
-    
+
   };
 
   const handleDeviceChange = async (devices: SelectedDevices) => {
@@ -87,7 +87,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
 
     // Track default device preference changes
     // Note: Individual device selection analytics are tracked in DeviceSelection component
-    
+
   };
 
   const handleOpenFolder = async () => {
@@ -106,7 +106,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
       await store.set('show_recording_notification', enabled);
       await store.save();
       toast.success('Preference saved');
-      
+
     } catch (error) {
       console.error('Failed to save notification preference:', error);
       toast.error('Failed to save preference');
@@ -147,21 +147,22 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
   return (
     <div className="space-y-6">
       <div>
-        <h3 className="text-lg font-semibold mb-4">Recording Settings</h3>
+        <h3 className="text-lg font-semibold mb-4">Recordings</h3>
         <p className="text-sm text-gray-600 mb-6">
-          Configure how your audio recordings are saved during meetings.
+          Choose how to save audio.
         </p>
       </div>
 
       {/* Auto Save Toggle */}
       <div className="flex items-center justify-between p-4 border rounded-lg">
         <div className="flex-1">
-          <div className="font-medium">Save Audio Recordings</div>
+          <div className="font-medium">Save audio</div>
           <div className="text-sm text-gray-600">
-            Automatically save audio files when recording stops
+            Save an audio file when recording stops.
           </div>
         </div>
         <Switch
+          aria-label="Save audio"
           checked={preferences.auto_save}
           onCheckedChange={handleAutoSaveToggle}
           disabled={saving}
@@ -181,7 +182,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
               className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
             >
               <FolderOpen className="w-4 h-4" />
-              Open Folder
+              Open folder
             </button>
           </div>
 
@@ -190,7 +191,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
               <strong>File Format:</strong> {preferences.file_format.toUpperCase()} files
             </div>
             <div className="text-xs text-blue-600 mt-1">
-              Recordings are saved with timestamp: recording_YYYYMMDD_HHMMSS.{preferences.file_format}
+              File names include the recording date and time.
             </div>
           </div>
         </div>
@@ -200,7 +201,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
       {!preferences.auto_save && (
         <div className="p-4 border rounded-lg bg-yellow-50">
           <div className="text-sm text-yellow-800">
-            Audio recording is disabled. Enable "Save Audio Recordings" to automatically save your meeting audio.
+            Audio files will not be saved. Transcripts are still saved.
           </div>
         </div>
       )}
@@ -208,12 +209,13 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
       {/* Recording Notification Toggle */}
       <div className="flex items-center justify-between p-4 border rounded-lg">
         <div className="flex-1">
-          <div className="font-medium">Recording Start Notification</div>
+          <div className="font-medium">Recording reminder</div>
           <div className="text-sm text-gray-600">
-            Show reminder to inform participants when recording starts
+            Remind you to notify the participants.
           </div>
         </div>
         <Switch
+          aria-label="Recording reminder"
           checked={showRecordingNotification}
           onCheckedChange={handleNotificationToggle}
         />
@@ -222,9 +224,9 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
       {/* Device Preferences */}
       <div className="space-y-4">
         <div className="border-t pt-6">
-          <h4 className="text-base font-medium text-gray-900 mb-4">Default Audio Devices</h4>
+          <h4 className="text-base font-medium text-gray-900 mb-4">Default audio devices</h4>
           <p className="text-sm text-gray-600 mb-4">
-            Set your preferred microphone and system audio devices for recording. These will be automatically selected when starting new recordings.
+            Use these devices for new recordings.
           </p>
 
           <div className="border rounded-lg p-4 bg-gray-50">

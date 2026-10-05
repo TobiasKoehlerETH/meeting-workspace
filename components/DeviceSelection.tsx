@@ -203,6 +203,8 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
           {/*   {isMonitoring ? 'Stop Test' : 'Test Mic'} */}
           {/* </button> */}
           <button
+            type="button"
+            aria-label="Refresh audio devices"
             onClick={handleRefresh}
             disabled={refreshing || disabled}
             className="h-8 w-8 p-0 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors hover:bg-gray-100 disabled:pointer-events-none disabled:opacity-50"
@@ -332,13 +334,9 @@ export function DeviceSelection({ selectedDevices, onDeviceChange, disabled = fa
 
       {/* Info text */}
       <div className="text-xs text-gray-500 space-y-1">
-        <p>• <strong>Microphone:</strong> Records your voice and ambient sound</p>
-        <p>• <strong>System Audio:</strong> Records computer audio (music, calls, etc.)</p>
+        <p>Microphone records your voice. System audio records computer sound.</p>
         {isMonitoring && (
           <p>• <strong>Mic Levels:</strong> Green = good, Yellow = loud, Red = too loud</p>
-        )}
-        {!isMonitoring && inputDevices.length > 0 && (
-          <p>• <strong>Tip:</strong> Click "Test Mic" to check if your microphone is working</p>
         )}
       </div>
     </div>

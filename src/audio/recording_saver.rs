@@ -48,6 +48,8 @@ pub struct DeviceInfo {
 
 /// New recording saver using incremental saving strategy
 pub struct RecordingSaver {
+    accumulation_error: Arc<Mutex<Option<String>>>,
+    accumulation_task: Option<tokio::task::JoinHandle<()>>,
     incremental_saver: Option<Arc<AsyncMutex<IncrementalAudioSaver>>>,
     meeting_folder: Option<PathBuf>,
     meeting_name: Option<String>,
@@ -66,6 +68,8 @@ impl RecordingSaver {
             metadata: None,
             transcript_segments: Arc::new(Mutex::new(Vec::new())),
             chunk_receiver: None,
+            accumulation_task: None,
+            accumulation_error: Arc::new(Mutex::new(None)),
             is_saving: Arc::new(Mutex::new(false)),
         }
     }
@@ -176,9 +180,10 @@ impl RecordingSaver {
         let is_saving_clone = self.is_saving.clone();
         let incremental_saver_arc = self.incremental_saver.clone();
         let save_audio = auto_save;
+        let accumulation_error = self.accumulation_error.clone();
 
         if let Some(mut receiver) = self.chunk_receiver.take() {
-            tokio::spawn(async move {
+            self.accumulation_task = Some(tokio::spawn(async move {
                 info!("Recording saver accumulation task started (save_audio: {})", save_audio);
 
                 while let Some(chunk) = receiver.recv().await {
@@ -199,6 +204,7 @@ impl RecordingSaver {
                         if let Some(saver_arc) = &incremental_saver_arc {
                             let mut saver_guard = saver_arc.lock().await;
                             if let Err(e) = saver_guard.add_chunk(chunk) {
+                                if let Ok(mut error) = accumulation_error.lock() { *error = Some(e.to_string()); }
                                 error!("Failed to add chunk to incremental saver: {}", e);
                             }
                         } else {
@@ -211,7 +217,7 @@ impl RecordingSaver {
                 }
 
                 info!("Recording saver accumulation task ended");
-            });
+            }));
         }
 
         // Set saving flag
@@ -255,7 +261,7 @@ impl RecordingSaver {
                 microphone: None,  // Could be enhanced to store actual device names
                 system_audio: None,
             },
-            audio_file: if create_checkpoints { "audio.mp4".to_string() } else { "".to_string() },
+            audio_file: if create_checkpoints { if super::transcription::nemotron::is_two_stage() { "recording.wav".to_string() } else { "audio.mp4".to_string() } } else { "".to_string() },
             transcript_file: "transcripts.json".to_string(),
             sample_rate: 48000,
             status: "recording".to_string(),
@@ -361,6 +367,16 @@ impl RecordingSaver {
         recording_duration: Option<f64>
     ) -> Result<Option<String>, String> {
         info!("Stopping recording saver");
+        if super::transcription::nemotron::is_two_stage() {
+            if let Some(task) = self.accumulation_task.take() {
+                tokio::time::timeout(std::time::Duration::from_secs(60), task).await
+                    .map_err(|_| "Original audio is still being written. Recording file retained.".to_string())?
+                    .map_err(|error| error.to_string())?;
+            }
+        }
+        if let Some(error) = self.accumulation_error.lock().map_err(|_| "Cannot check original audio state.")?.clone() {
+            return Err(format!("Original audio save failed: {}", error));
+        }
 
         // Stop accumulation
         if let Ok(mut is_saving) = self.is_saving.lock() {
@@ -462,6 +478,9 @@ impl RecordingSaver {
     pub fn get_meeting_folder(&self) -> Option<&PathBuf> {
         self.meeting_folder.as_ref()
     }
+
+    /// Get accumulated transcript segments (for reload sync)
+    pub fn has_audio_saver(&self) -> bool { self.incremental_saver.is_some() }
 
     /// Get accumulated transcript segments (for reload sync)
     pub fn get_transcript_segments(&self) -> Vec<TranscriptSegment> {

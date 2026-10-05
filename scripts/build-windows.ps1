@@ -1,4 +1,4 @@
-param([switch]$NativeOnly, [switch]$AppOnly)
+param([switch]$NativeOnly, [switch]$AppOnly, [switch]$TestTranscription)
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
@@ -31,6 +31,20 @@ New-Item -ItemType Directory -Force src-tauri\runtime | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $redistVersion.FullName 'x64') -Recurse -File -Filter '*.dll' |
     Copy-Item -Destination src-tauri\runtime
 
+if ($TestTranscription) {
+    cargo test --release --locked -p meeting-workspace --lib audio::transcription::openrouter_provider::tests --target-dir target/windows-app
+    if ($LASTEXITCODE -ne 0) { throw 'API transcription checks failed.' }
+    cargo test --release --locked -p meeting-workspace --lib config::language_tests --target-dir target/windows-app
+    if ($LASTEXITCODE -ne 0) { throw 'Transcription language checks failed.' }
+    cargo test --release --locked -p meeting-workspace --lib audio::vad::speed_tests --target-dir target/windows-app -- --nocapture
+    if ($LASTEXITCODE -ne 0) { throw 'Recording preparation checks failed.' }
+    cargo test --release --locked -p meeting-workspace --lib audio::incremental_saver::original_audio_tests --target-dir target/windows-app -- --nocapture
+    if ($LASTEXITCODE -ne 0) { throw 'Original WAV preservation checks failed.' }
+    cargo test --release --locked -p meeting-workspace --lib parakeet_final_pass_from_original_speech --target-dir target/windows-app -- --ignored --nocapture
+    if ($LASTEXITCODE -ne 0) { throw 'Local Parakeet final-pass check failed.' }
+    return
+}
+
 if ($AppOnly) {
     cargo build --release --locked -p meeting-workspace --features tauri/custom-protocol --target-dir target/windows-app
     if ($LASTEXITCODE -ne 0) { throw 'The Meeting Workspace application failed to build.' }
@@ -38,6 +52,10 @@ if ($AppOnly) {
 }
 
 if ($NativeOnly) {
+    cargo build --release --locked -p nemotron-helper --target-dir target/nemotron-helper
+    if ($LASTEXITCODE -ne 0) { throw 'The local streaming speech helper failed to build.' }
+    New-Item -ItemType Directory -Force src-tauri\binaries | Out-Null
+    Copy-Item -LiteralPath target\nemotron-helper\release\nemotron-helper.exe -Destination src-tauri\binaries\nemotron-helper-x86_64-pc-windows-msvc.exe
     cargo build --release --locked -p llama-helper
     if ($LASTEXITCODE -ne 0) { throw 'The local summary helper failed to build.' }
     New-Item -ItemType Directory -Force src-tauri\binaries | Out-Null

@@ -98,8 +98,8 @@ const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 export function ConfigProvider({ children }: { children: ReactNode }) {
   // Model configuration state
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
-    provider: 'ollama',
-    model: 'llama3.2:latest',
+    provider: 'openrouter',
+    model: 'google/gemini-2.5-flash-lite',
     whisperModel: 'large-v3',
     ollamaEndpoint: null
   });
@@ -177,6 +177,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   // Load Ollama models (uses saved endpoint, re-runs when endpoint changes after config load)
   useEffect(() => {
     const loadModels = async () => {
+      if (modelConfig.provider !== 'ollama') return;
       try {
         const endpoint = modelConfig.ollamaEndpoint || null;
         const modelList = await invoke<OllamaModel[]>('get_ollama_models', { endpoint });
@@ -188,7 +189,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       }
     };
     loadModels();
-  }, [modelConfig.ollamaEndpoint]);
+  }, [modelConfig.provider, modelConfig.ollamaEndpoint]);
 
   // Load transcript configuration on mount
   useEffect(() => {
@@ -196,18 +197,21 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
       try {
         const config = await configService.getTranscriptConfig();
         if (config) {
-          console.log('[ConfigContext] Loaded saved transcript config:', config);
+          console.log('[ConfigContext] Loaded saved transcript provider:', config.provider);
           setTranscriptModelConfig({
             provider: config.provider || 'parakeet',
             model: config.model || 'parakeet-tdt-0.6b-v3-int8',
             apiKey: config.apiKey || null
           });
+          void invoke('prepare_recording').catch(() => console.debug('Speech preparation will retry when a model is available.'));
         }
       } catch (error) {
         console.error('[ConfigContext] Failed to load transcript config:', error);
       }
     };
     loadTranscriptConfig();
+    window.addEventListener('transcript-config-updated', loadTranscriptConfig);
+    return () => window.removeEventListener('transcript-config-updated', loadTranscriptConfig);
   }, []);
 
   // Sync language preference to Rust on mount (fixes startup desync bug)
@@ -322,7 +326,7 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     const setupListener = async () => {
       const { listen } = await import('@tauri-apps/api/event');
       const unlisten = await listen<ModelConfig>('model-config-updated', (event) => {
-        console.log('[ConfigContext] Received model-config-updated event:', event.payload);
+        console.log('[ConfigContext] Updated summary provider:', event.payload.provider);
         setModelConfig(event.payload);
 
         // Update provider-specific key when config changes

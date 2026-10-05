@@ -14,8 +14,8 @@ interface SummaryModelSettingsProps {
 
 export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsProps) {
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
-    provider: 'ollama',
-    model: 'llama3.2:latest',
+    provider: 'openrouter',
+    model: 'google/gemini-2.5-flash-lite',
     whisperModel: 'large-v3',
     apiKey: null,
     ollamaEndpoint: null
@@ -83,7 +83,7 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
     const setupListener = async () => {
       const { listen } = await import('@tauri-apps/api/event');
       const unlisten = await listen<ModelConfig>('model-config-updated', (event) => {
-        console.log('SummaryModelSettings received model-config-updated event:', event.payload);
+        console.log('Updated summary provider:', event.payload.provider);
         setModelConfig(event.payload);
       });
 
@@ -127,19 +127,19 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Auto Summary</h3>
-            <p className="text-sm text-gray-600">Auto Generating summary after meeting completion(Stopping)</p>
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Automatic summaries</h3>
+            <p className="text-sm text-gray-600">Create a summary after recording stops.</p>
           </div>
-          <Switch checked={isAutoSummary} onCheckedChange={toggleIsAutoSummary} />
+          <Switch aria-label="Automatic summaries" checked={isAutoSummary} onCheckedChange={toggleIsAutoSummary} />
         </div>
       </div>
 
       <SummaryLanguageSettings />
 
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-        <h3 className="text-lg font-semibold mb-4">Summary Model Configuration</h3>
+        <h3 className="text-lg font-semibold mb-4">Summary model</h3>
         <p className="text-sm text-gray-600 mb-6">
-          Configure the AI model used for generating meeting summaries.
+          Choose the AI provider and model.
         </p>
 
         <ModelSettingsModal

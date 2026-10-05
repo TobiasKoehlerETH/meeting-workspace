@@ -10,22 +10,22 @@ export function WelcomeStep() {
   const features = [
     {
       icon: Lock,
-      title: 'Your data never leaves your device',
+      title: 'Store recordings locally',
     },
     {
       icon: Sparkles,
-      title: 'Intelligent summaries & insights',
+      title: 'Create transcripts and summaries',
     },
     {
       icon: Cpu,
-      title: 'Works offline, no cloud required',
+      title: 'Use local AI models',
     },
   ];
 
   return (
     <OnboardingContainer
-      title="Welcome to Meeting Workspace"
-      description="Record. Transcribe. Summarize. All on your device."
+      title="Meeting Workspace"
+      description="Record audio. Create transcripts and summaries."
       step={1}
       hideProgress={true}
     >
@@ -56,9 +56,8 @@ export function WelcomeStep() {
             onClick={goNext}
             className="w-full h-11 bg-gray-900 hover:bg-gray-800 text-white"
           >
-            Get Started
+            Set up
           </Button>
-          <p className="text-xs text-center text-gray-500">Takes less than 3 minutes</p>
         </div>
       </div>
     </OnboardingContainer>

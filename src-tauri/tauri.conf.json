@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "Meeting Workspace",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "identifier": "local.meetingworkspace.app",
   "build": {
     "frontendDist": "../out",
@@ -97,6 +97,7 @@
       "templates/*.json"
     ],
     "externalBin": [
+      "binaries/nemotron-helper",
       "binaries/llama-helper",
       "binaries/ffmpeg"
     ],
