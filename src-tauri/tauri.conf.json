@@ -105,7 +105,12 @@
       "signingIdentity": "-",
       "hardenedRuntime": true
     },
-    "windows": {}
+    "windows": {
+      "nsis": {
+        "installerIcon": "icons/icon.ico",
+        "uninstallerIcon": "icons/icon.ico"
+      }
+    }
   },
   "plugins": {}
 }
