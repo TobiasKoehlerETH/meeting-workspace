@@ -10,7 +10,7 @@ use super::devices::get_safe_recording_devices_macos;
 
 #[cfg(not(target_os = "macos"))]
 use super::devices::{default_input_device, default_output_device};
-use super::recording_state::{RecordingState, AudioChunk, DeviceType as RecordingDeviceType};
+use super::recording_state::{RecordingState, DeviceType as RecordingDeviceType};
 use super::pipeline::AudioPipelineManager;
 use super::stream::AudioStreamManager;
 use super::recording_saver::RecordingSaver;
@@ -35,6 +35,9 @@ pub struct RecordingManager {
 unsafe impl Send for RecordingManager {}
 
 impl RecordingManager {
+    pub fn set_save_folder(&mut self, folder: std::path::PathBuf) {
+        self.recording_saver.set_save_folder(folder);
+    }
     /// Create a new recording manager
     pub fn new() -> Self {
         let state = RecordingState::new();
@@ -64,23 +67,17 @@ impl RecordingManager {
         &mut self,
         microphone_device: Option<Arc<AudioDevice>>,
         system_device: Option<Arc<AudioDevice>>,
-        auto_save: bool,
-    ) -> Result<mpsc::UnboundedReceiver<AudioChunk>> {
-        let auto_save = auto_save || super::transcription::nemotron::is_two_stage();
-        let microphone_device = if super::transcription::nemotron::is_two_stage() && microphone_device.is_none() {
-            Some(Arc::new(super::default_input_device()?))
-        } else { microphone_device };
-        let system_device = if super::transcription::nemotron::is_two_stage() { None } else { system_device };
+        _auto_save: bool,
+    ) -> Result<()> {
+        // The saved audio is the source for transcription and retries.
+        let auto_save = true;
         info!("Starting recording manager (auto_save: {})", auto_save);
-
-        // Set up transcription channel
-        let (transcription_sender, transcription_receiver) = mpsc::unbounded_channel::<AudioChunk>();
 
         // CRITICAL FIX: Create recording sender for pre-mixed audio from pipeline
         // Pipeline will mix mic + system audio professionally and send to this channel
         // Pass auto_save to control whether audio checkpoints are created
         let recording_sender = self.recording_saver.start_accumulation(auto_save);
-        if super::transcription::nemotron::is_two_stage() && !self.recording_saver.has_audio_saver() {
+        if !self.recording_saver.has_audio_saver() {
             return Err(anyhow::anyhow!("Cannot create the original recording.wav. Check the recording folder."));
         }
 
@@ -111,13 +108,9 @@ impl RecordingManager {
             system_device.as_ref().map(|d| d.name.clone())
         );
 
-        // Start the audio processing pipeline with FFmpeg adaptive mixer
-        // Pipeline will: 1) Mix mic+system audio with adaptive buffering, 2) Send mixed to recording_sender,
-        // 3) Apply VAD and send speech segments to transcription
+        // Mix microphone and system audio into the saved recording.
         self.pipeline_manager.start(
             self.state.clone(),
-            transcription_sender,
-            0, // Ignored - using dynamic sizing internally
             48000, // 48kHz sample rate
             Some(recording_sender), // CRITICAL: Pass recording sender to receive pre-mixed audio
             mic_name,
@@ -129,13 +122,12 @@ impl RecordingManager {
         // The pipeline channel is ready and queues audio while its worker starts.
 
         // Start audio streams - they send RAW unmixed chunks to pipeline for mixing
-        // Pipeline handles mixing and distribution to both recording and transcription
-        self.stream_manager.start_streams(microphone_device.clone(), system_device.clone(), None).await?;
-        tokio::task::spawn_blocking(|| {
-            if let Err(error) = super::vad::prepare_capture_vad() {
-                warn!("Cannot prepare the next speech detector: {}", error);
-            }
-        });
+        // The pipeline writes mixed audio; transcription starts after Stop.
+        if let Err(error) = self.stream_manager.start_streams(microphone_device.clone(), system_device.clone()).await {
+            self.state.stop_recording();
+            let _ = self.pipeline_manager.stop().await;
+            return Err(error);
+        }
 
         // Start device monitoring to detect disconnects
         if let Some(ref mut monitor) = self.device_monitor {
@@ -150,7 +142,7 @@ impl RecordingManager {
         info!("Recording manager started successfully with {} active streams",
                self.stream_manager.active_stream_count());
 
-        Ok(transcription_receiver)
+        Ok(())
     }
 
     /// Start recording with default devices and auto_save setting
@@ -179,7 +171,7 @@ impl RecordingManager {
     ///
     /// User still hears audio via Bluetooth (playback), but recording captures
     /// via stable wired path for best quality.
-    pub async fn start_recording_with_defaults_and_auto_save(&mut self, auto_save: bool) -> Result<mpsc::UnboundedReceiver<AudioChunk>> {
+    pub async fn start_recording_with_defaults_and_auto_save(&mut self, auto_save: bool) -> Result<()> {
         #[cfg(target_os = "macos")]
         {
             info!("🎙️ [macOS] Starting recording with smart device selection (Bluetooth override enabled)");
@@ -284,9 +276,7 @@ impl RecordingManager {
 
         // CRITICAL: Force pipeline to flush ALL accumulated audio before stopping
         debug!("💨 Forcing pipeline to flush accumulated audio immediately");
-        if let Err(e) = self.pipeline_manager.force_flush_and_stop().await {
-            error!("Error during force flush: {}", e);
-        }
+        self.pipeline_manager.force_flush_and_stop().await?;
 
         // CRITICAL: Full cleanup to release all Arc references and resources
         // This ensures microphone is released even if Drop is delayed
@@ -314,7 +304,7 @@ impl RecordingManager {
             }
             Err(e) => {
                 error!("Failed to save recording: {}", e);
-                // Don't fail the stop operation if saving fails
+                return Err(anyhow::anyhow!(e));
             }
         }
 
@@ -353,7 +343,7 @@ impl RecordingManager {
             }
             Err(e) => {
                 error!("Failed to save recording: {}", e);
-                // Don't fail the stop operation if saving fails
+                return Err(anyhow::anyhow!(e));
             }
         }
 
@@ -533,7 +523,7 @@ impl RecordingManager {
                     self.stream_manager.stop_streams()?;
                     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-                    self.stream_manager.start_streams(Some(device_arc.clone()), system_device, None).await?;
+                    self.stream_manager.start_streams(Some(device_arc.clone()), system_device).await?;
                     self.state.set_microphone_device(device_arc);
 
                     info!("✅ Microphone reconnected successfully");
@@ -547,7 +537,7 @@ impl RecordingManager {
                     self.stream_manager.stop_streams()?;
                     tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
 
-                    self.stream_manager.start_streams(microphone_device, Some(device_arc.clone()), None).await?;
+                    self.stream_manager.start_streams(microphone_device, Some(device_arc.clone())).await?;
                     self.state.set_system_device(device_arc);
 
                     info!("✅ System audio reconnected successfully");

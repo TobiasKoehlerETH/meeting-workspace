@@ -11,17 +11,21 @@ New-Item -ItemType Directory -Force -Path $portableDirectory | Out-Null
 Copy-Item -LiteralPath (Join-Path $releaseDirectory 'meeting-workspace.exe') -Destination (Join-Path $portableDirectory 'Meeting-Workspace.exe') -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'src-tauri\binaries\ffmpeg-x86_64-pc-windows-msvc.exe') -Destination (Join-Path $portableDirectory 'ffmpeg.exe') -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'src-tauri\binaries\llama-helper-x86_64-pc-windows-msvc.exe') -Destination (Join-Path $portableDirectory 'llama-helper.exe') -Force
-Copy-Item -LiteralPath (Join-Path $projectRoot 'src-tauri\binaries\nemotron-helper-x86_64-pc-windows-msvc.exe') -Destination (Join-Path $portableDirectory 'nemotron-helper.exe') -Force
 Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src-tauri\runtime') -Filter '*.dll' -File | Copy-Item -Destination $portableDirectory -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'src-tauri\templates') -Destination $portableDirectory -Recurse -Force
+Copy-Item -LiteralPath (Join-Path $projectRoot 'src-tauri\speaker-runtime') -Destination $portableDirectory -Recurse -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $portableDirectory -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'src-tauri\licenses') -Destination $portableDirectory -Recurse -Force
 Set-Content -LiteralPath (Join-Path $portableDirectory 'README.txt') -Value @'
 Run Meeting-Workspace.exe. Keep the executables, DLLs, templates folder, and LICENSE together. No installation is required. Application data is stored in your Windows application-data directory.
 
-For API transcription, select Settings > Transcription > API OpenRouter and save an API key. Whisper Large V3 Turbo is the default speech model. Local Parakeet and Whisper remain available. Personal API keys are not included in this package.
+Download speech and summary models once in Settings. Recording saves microphone and system audio to recording.wav. Stop saves audio only. Select the saved meeting and click Transcribe to run local transcription. Listen to recording plays saved audio in the app. No live transcript is generated. New setups use quantized Whisper Turbo. Parakeet remains available as another local option.
 
-For local two-stage transcription, select Settings > Transcription > Local Nemotron live + Parakeet final. Download both models and enable the mode. Microphone audio is saved as recording.wav. Nemotron supplies the live transcript; Parakeet creates the final transcript after Stop. The model weights stay in the Windows application-data directory.
+Summaries use the built-in local AI. Set Settings > Summary > Summary lines to 1-50 bullet lines. Model weights stay in the Windows application-data directory. Inference requires no API key or internet connection.
+
+Speaker detection runs locally when you click Transcribe using the bundled speaker-runtime folder. Keep that folder with the executable. Settings > Transcription lets you turn it off or specify the number of speakers (0 means Auto). Rename speakers in the transcript's Speaker names section. Regenerate summaries to use updated names. Labels are estimates and do not identify Teams accounts.
+
+For discreet launch, use Meeting-Workspace.exe --stealth or enable Settings > General > Discreet launch (stealth mode). The window stays hidden, app notifications are silent, and the tray tooltip shows only the app name. Start and stop recording manually from the tray menu. The menu and main window show recording controls; operating-system microphone indicators remain visible. Use --show to open the window and override saved launch preferences for a new session.
 '@
 
 $zipPath = Join-Path $OutputDirectory ('Meeting-Workspace-Portable-' + $applicationVersion + '.zip')

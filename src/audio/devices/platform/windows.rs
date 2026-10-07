@@ -109,6 +109,26 @@ pub fn get_windows_device(audio_device: &AudioDevice) -> Result<(cpal::Device, c
 
     info!("Looking for Windows device with base name: {}", base_name);
 
+    // The usual selection is the default endpoint. Resolve it without enumerating
+    // every endpoint and probing the driver's full list of supported formats.
+    let default_device = match audio_device.device_type {
+        DeviceType::Input => wasapi_host.default_input_device(),
+        DeviceType::Output => wasapi_host.default_output_device(),
+    };
+    if let Some(device) = default_device {
+        if device.name().ok().as_deref() == Some(base_name) {
+            let config = match audio_device.device_type {
+                DeviceType::Input => device.default_input_config(),
+                DeviceType::Output => device.default_output_config(),
+            };
+            if let Ok(config) = config {
+                if matches!(config.sample_format(), cpal::SampleFormat::F32 | cpal::SampleFormat::I16 | cpal::SampleFormat::I32 | cpal::SampleFormat::I8) {
+                    return Ok((device, config));
+                }
+            }
+        }
+    }
+
     match audio_device.device_type {
         DeviceType::Input => {
             for device in wasapi_host.input_devices()? {
@@ -192,6 +212,13 @@ pub fn get_windows_device(audio_device: &AudioDevice) -> Result<(cpal::Device, c
                     if name == base_name || name.contains(base_name) {
                         // info!("Found matching output device: {}", name);
 
+                        // WASAPI loopback uses the endpoint's shared mix format.
+                        // Only probe supported formats if the normal format fails.
+                        if let Ok(config) = device.default_output_config() {
+                            if matches!(config.sample_format(), cpal::SampleFormat::F32 | cpal::SampleFormat::I16 | cpal::SampleFormat::I32 | cpal::SampleFormat::I8) {
+                                return Ok((device, config));
+                            }
+                        }
                         // For output devices, we want to use them in loopback mode
                         if let Ok(supported_configs) = device.supported_output_configs() {
                             let configs: Vec<_> = supported_configs.collect();

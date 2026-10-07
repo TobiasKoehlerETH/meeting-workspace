@@ -2,8 +2,7 @@
 resolver = "2"
 members = [
     "src-tauri",
-    "llama-helper",
-    "nemotron-helper"
+    "llama-helper"
 ]
 
 # Shared workspace settings

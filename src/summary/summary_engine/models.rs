@@ -225,10 +225,7 @@ pub fn get_model_by_name(name: &str) -> Option<ModelDef> {
 
 /// Get the default model (first in list)
 pub fn get_default_model() -> ModelDef {
-    get_available_models()
-        .into_iter()
-        .next()
-        .expect("At least one model must be defined")
+    get_model_by_name("qwen3.5:4b").expect("The default summary model must be defined")
 }
 
 /// Resolve model name to full file path in the models directory
@@ -325,7 +322,7 @@ pub const DEFAULT_MAX_TOKENS: i32 = 4096;
 pub const DEFAULT_IDLE_TIMEOUT_SECS: u64 = 300; // 5 minutes
 
 /// Generation timeout (how long to wait for a response)
-pub const GENERATION_TIMEOUT_SECS: u64 = 900; // 15 minutes
+pub const GENERATION_TIMEOUT_SECS: u64 = 1800; // Allow slower CPUs to complete high-quality summaries.
 
 #[cfg(test)]
 mod tests {

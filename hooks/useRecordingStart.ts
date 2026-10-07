@@ -7,7 +7,7 @@ import { recordingService } from '@/services/recordingService';
 import { showRecordingNotification } from '@/lib/recordingNotification';
 import { toast } from 'sonner';
 
-/** Recording controls use native validation for the selected local or API provider. */
+/** Capture audio only. Models load when the user later chooses Transcribe. */
 export function useRecordingStart(
   isRecording: boolean,
   setIsRecording: (value: boolean) => void,
@@ -15,13 +15,17 @@ export function useRecordingStart(
 ): { handleRecordingStart: () => Promise<void>; isAutoStarting: boolean } {
   const [isAutoStarting, setIsAutoStarting] = useState(false);
   const starting = useRef(false);
-  const { clearTranscripts, setMeetingTitle } = useTranscripts();
+  const { setMeetingTitle } = useTranscripts();
   const { setIsMeetingActive } = useSidebar();
-  const { selectedDevices } = useConfig();
-  const { setStatus } = useRecordingState();
+  const { selectedDevices, devicesLoaded } = useConfig();
+  const { setStatus, status } = useRecordingState();
 
   const handleRecordingStart = useCallback(async () => {
     if (isRecording || starting.current) return;
+    if ([RecordingStatus.STOPPING, RecordingStatus.SAVING, RecordingStatus.PROCESSING_TRANSCRIPTS].includes(status)) {
+      throw new Error('Wait for the current recording or transcription job to finish.');
+    }
+    if (!devicesLoaded) throw new Error('Audio settings are loading. Please try again.');
     starting.current = true;
     try {
       const now = new Date();
@@ -30,7 +34,6 @@ export function useRecordingStart(
       setStatus(RecordingStatus.STARTING, 'Starting recording…');
       await recordingService.startRecordingWithDevices(selectedDevices?.micDevice || null, selectedDevices?.systemDevice || null, title);
       setMeetingTitle(title);
-      clearTranscripts();
       setIsRecording(true);
       setIsMeetingActive(true);
       // Notification failure must not mark an active recording as stopped.
@@ -44,23 +47,27 @@ export function useRecordingStart(
       }
       throw error;
     } finally { starting.current = false; }
-  }, [isRecording, selectedDevices, setMeetingTitle, clearTranscripts, setIsRecording, setIsMeetingActive, setStatus, showModal]);
+  }, [isRecording, selectedDevices, devicesLoaded, status, setMeetingTitle, setIsRecording, setIsMeetingActive, setStatus, showModal]);
 
   useEffect(() => {
     const startFromSidebar = async () => {
       if (isRecording || starting.current) return;
+      if (!devicesLoaded) {
+        sessionStorage.setItem('autoStartRecording', 'true');
+        return;
+      }
       setIsAutoStarting(true);
       try { await handleRecordingStart(); }
       catch (error) { toast.error('Cannot start recording.', { description: error instanceof Error ? error.message : String(error) }); }
       finally { setIsAutoStarting(false); }
     };
-    if (sessionStorage.getItem('autoStartRecording') === 'true') {
+    if (devicesLoaded && sessionStorage.getItem('autoStartRecording') === 'true') {
       sessionStorage.removeItem('autoStartRecording');
       void startFromSidebar();
     }
     window.addEventListener('start-recording-from-sidebar', startFromSidebar);
     return () => window.removeEventListener('start-recording-from-sidebar', startFromSidebar);
-  }, [isRecording, handleRecordingStart]);
+  }, [isRecording, devicesLoaded, handleRecordingStart]);
 
   return { handleRecordingStart, isAutoStarting };
 }

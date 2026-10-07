@@ -133,11 +133,6 @@ export default function PageContent({
     meeting,
   });
 
-  // Track page view
-  useEffect(() => {
-    
-  }, []);
-
   // Auto-generate summary when flag is set
   useEffect(() => {
     let cancelled = false;

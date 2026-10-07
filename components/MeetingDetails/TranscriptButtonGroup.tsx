@@ -1,12 +1,11 @@
-"use client";
+'use client';
 
-import { useState, useCallback } from 'react';
+import { useRef } from 'react';
 import { Button } from '@/components/ui/button';
-import { ButtonGroup } from '@/components/ui/button-group';
-import { Copy, FolderOpen, RefreshCw } from 'lucide-react';
-import { RetranscribeDialog } from './RetranscribeDialog';
-import { useConfig } from '@/contexts/ConfigContext';
-
+import { Copy, FolderOpen, FileText } from 'lucide-react';
+import { useRecordingState, RecordingStatus } from '@/contexts/RecordingStateContext';
+import { finalizeTranscript } from '@/lib/finalize-transcript';
+import { toast } from 'sonner';
 
 interface TranscriptButtonGroupProps {
   transcriptCount: number;
@@ -17,82 +16,38 @@ interface TranscriptButtonGroupProps {
   onRefetchTranscripts?: () => Promise<void>;
 }
 
-
 export function TranscriptButtonGroup({
-  transcriptCount,
-  onCopyTranscript,
-  onOpenMeetingFolder,
-  meetingId,
-  meetingFolderPath,
-  onRefetchTranscripts,
+  transcriptCount, onCopyTranscript, onOpenMeetingFolder,
+  meetingId, meetingFolderPath, onRefetchTranscripts,
 }: TranscriptButtonGroupProps) {
-  const { betaFeatures } = useConfig();
-  const [showRetranscribeDialog, setShowRetranscribeDialog] = useState(false);
+  const { status, isRecording, isProcessing, isStopping, isSaving, setStatus, setTranscriptProgress } = useRecordingState();
+  const starting = useRef(false);
+  const busy = isRecording || isProcessing || isStopping || isSaving || status === RecordingStatus.STARTING;
 
-  const handleRetranscribeComplete = useCallback(async () => {
-    // Refetch transcripts to show the updated data
-    if (onRefetchTranscripts) {
-      await onRefetchTranscripts();
-    }
-  }, [onRefetchTranscripts]);
+  async function transcribe() {
+    if (busy || starting.current || !meetingId || !meetingFolderPath) return;
+    starting.current = true;
+    setStatus(RecordingStatus.PROCESSING_TRANSCRIPTS, 'Preparing local transcription…');
+    try {
+      await finalizeTranscript(meetingId, meetingFolderPath, setTranscriptProgress);
+      setStatus(RecordingStatus.COMPLETED);
+      await onRefetchTranscripts?.();
+      window.dispatchEvent(new CustomEvent('meeting-transcribed', { detail: { meetingId } }));
+    } catch (error) {
+      setStatus(RecordingStatus.ERROR, String(error));
+      toast.error('Transcription could not finish', { description: `${String(error)} Your original recording is still saved.` });
+    } finally { starting.current = false; }
+  }
 
-  return (
-    <div className="flex items-center justify-center w-full gap-2">
-      <ButtonGroup>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => {
-            
-            onCopyTranscript();
-          }}
-          disabled={transcriptCount === 0}
-          title={transcriptCount === 0 ? 'No transcript available' : 'Copy Transcript'}
-        >
-          <Copy />
-          <span className="hidden lg:inline">Copy</span>
-        </Button>
-
-        <Button
-          size="sm"
-          variant="outline"
-          className="xl:px-4"
-          onClick={() => {
-            
-            onOpenMeetingFolder();
-          }}
-          title="Open Recording Folder"
-        >
-          <FolderOpen className="xl:mr-2" size={18} />
-          <span className="hidden lg:inline">Recording</span>
-        </Button>
-
-        {betaFeatures.importAndRetranscribe && meetingId && meetingFolderPath && (
-          <Button
-            size="sm"
-            variant="outline"
-            className="bg-gray-100 hover:bg-gray-200 border-gray-200 xl:px-4"
-            onClick={() => {
-              
-              setShowRetranscribeDialog(true);
-            }}
-            title="Retranscribe to enhance your recorded audio"
-          >
-            <RefreshCw className="xl:mr-2" size={18} />
-            <span className="hidden lg:inline">Enhance</span>
-          </Button>
-        )}
-      </ButtonGroup>
-
-      {betaFeatures.importAndRetranscribe && meetingId && meetingFolderPath && (
-        <RetranscribeDialog
-          open={showRetranscribeDialog}
-          onOpenChange={setShowRetranscribeDialog}
-          meetingId={meetingId}
-          meetingFolderPath={meetingFolderPath}
-          onComplete={handleRetranscribeComplete}
-        />
-      )}
-    </div>
-  );
+  return <div className="flex flex-wrap items-center gap-2">
+    {meetingId && meetingFolderPath && <Button size="sm" disabled={busy}
+      onClick={() => void transcribe()} title="Transcribe locally using Settings > Transcription">
+      <FileText size={16} className="mr-1" />
+      {isProcessing ? 'Transcribing…' : transcriptCount ? 'Transcribe again' : 'Transcribe'}
+    </Button>}
+    <Button variant="outline" size="sm" onClick={onCopyTranscript}
+      disabled={transcriptCount === 0} aria-label="Copy transcript" title="Copy transcript"><Copy size={16} /></Button>
+    <Button variant="outline" size="sm" onClick={() => void onOpenMeetingFolder()}
+      aria-label="Open recording folder" title="Open recording folder"><FolderOpen size={16} /></Button>
+  </div>;
 }

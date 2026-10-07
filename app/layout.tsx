@@ -8,6 +8,7 @@ import MainContent from '@/components/MainContent'
 import { Toaster, toast } from 'sonner'
 import "sonner/dist/styles.css"
 import { useState, useEffect, useCallback } from 'react'
+import { useRouter, usePathname } from 'next/navigation'
 import { listen, UnlistenFn } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -62,6 +63,8 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   const [showOnboarding, setShowOnboarding] = useState(false)
+  const router = useRouter();
+  const pathname = usePathname();
   const [onboardingCompleted, setOnboardingCompleted] = useState(false)
 
   // Import audio state
@@ -111,14 +114,19 @@ export default function RootLayout({
       } else {
         // If in main app, forward to useRecordingStart via window event
         console.log('[Layout] Forwarding to start-recording-from-sidebar');
-        window.dispatchEvent(new CustomEvent('start-recording-from-sidebar'));
+        if (pathname === '/') {
+          window.dispatchEvent(new CustomEvent('start-recording-from-sidebar'));
+        } else {
+          sessionStorage.setItem('autoStartRecording', 'true');
+          router.push('/');
+        }
       }
     });
 
     return () => {
       unlisten.then(fn => fn());
     };
-  }, [showOnboarding]);
+  }, [showOnboarding, pathname, router]);
 
   // Handle file drop for audio import
   const handleFileDrop = useCallback((paths: string[]) => {

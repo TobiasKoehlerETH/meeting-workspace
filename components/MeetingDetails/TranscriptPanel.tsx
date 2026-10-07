@@ -1,10 +1,11 @@
 "use client";
 
 import { Transcript, TranscriptSegmentData } from '@/types';
-import { TranscriptView } from '@/components/TranscriptView';
 import { VirtualizedTranscriptView } from '@/components/VirtualizedTranscriptView';
 import { TranscriptButtonGroup } from './TranscriptButtonGroup';
 import { useMemo } from 'react';
+import { SpeakerNames } from './SpeakerNames';
+import { RecordingPlayer } from './RecordingPlayer';
 
 interface TranscriptPanelProps {
   transcripts: Transcript[];
@@ -60,12 +61,13 @@ export function TranscriptPanel({
       timestamp: t.audio_start_time ?? 0,
       endTime: t.audio_end_time,
       text: t.text,
+      speaker: t.speaker,
       confidence: t.confidence,
     }));
   }, [transcripts, usePagination, segments]);
 
   return (
-    <div className="hidden md:flex md:w-1/4 lg:w-1/3 min-w-0 border-r border-gray-200 bg-white flex-col relative shrink-0">
+    <div className="flex w-full md:w-1/4 lg:w-1/3 min-w-0 border-r border-gray-200 bg-white flex-col relative shrink-0">
       {/* Title area */}
       <div className="p-4 border-b border-gray-200">
         <TranscriptButtonGroup
@@ -76,11 +78,15 @@ export function TranscriptPanel({
           meetingFolderPath={meetingFolderPath}
           onRefetchTranscripts={onRefetchTranscripts}
         />
+        {meetingId && convertedSegments.length > 0 && <SpeakerNames meetingId={meetingId}
+          revision={convertedSegments[0]?.id ?? ''} onChanged={onRefetchTranscripts} />}
+        {meetingId && meetingFolderPath && <RecordingPlayer key={meetingId} meetingId={meetingId} />}
       </div>
 
       {/* Transcript content - use virtualized view for better performance */}
       <div className="flex-1 overflow-hidden pb-4">
-        <VirtualizedTranscriptView
+        {convertedSegments.length === 0 && <p className="p-4 text-sm text-gray-600">Your audio recording is saved. Click Transcribe when you want a local transcript and speaker labels.</p>}
+        {convertedSegments.length > 0 && <VirtualizedTranscriptView
           segments={convertedSegments}
           isRecording={isRecording}
           isPaused={false}
@@ -94,7 +100,7 @@ export function TranscriptPanel({
           totalCount={totalCount}
           loadedCount={loadedCount}
           onLoadMore={onLoadMore}
-        />
+        />}
       </div>
 
       {/* Custom prompt input at bottom of transcript section */}

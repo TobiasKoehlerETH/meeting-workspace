@@ -288,6 +288,9 @@ pub async fn show_recording_started_notification<R: Runtime>(
     manager_state: &NotificationManagerState<R>,
     meeting_name: Option<String>,
 ) -> Result<()> {
+    if crate::startup::is_stealth(app_handle) {
+        return Ok(());
+    }
     log_info!("Attempting to show recording started notification for meeting: {:?}", meeting_name);
 
     // Check if manager is initialized
@@ -364,6 +367,9 @@ pub async fn show_recording_stopped_notification<R: Runtime>(
     app_handle: &tauri::AppHandle<R>,
     manager_state: &NotificationManagerState<R>,
 ) -> Result<()> {
+    if crate::startup::is_stealth(app_handle) {
+        return Ok(());
+    }
     let manager_lock = manager_state.read().await;
     if let Some(manager) = manager_lock.as_ref() {
         manager.show_recording_stopped().await

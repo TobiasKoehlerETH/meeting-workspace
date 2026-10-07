@@ -8,7 +8,7 @@ import { ProcessRequest, SummaryResponse } from '@/types/summary';
 import { listen } from '@tauri-apps/api/event';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { useRecordingState } from '@/contexts/RecordingStateContext';
+import { useRecordingState, RecordingStatus } from '@/contexts/RecordingStateContext';
 import { toast } from 'sonner';
 
 interface RecordingControlsProps {
@@ -51,13 +51,12 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
   const [recordingPath, setRecordingPath] = useState<string | null>(null);
   const [transcript, setTranscript] = useState<string>('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isStarting, setIsStarting] = useState(false);
+  const [startPending, setIsStarting] = useState(false);
+  const isStarting = startPending || recordingState.status === RecordingStatus.STARTING;
   const [isStopping, setIsStopping] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
   const [isResuming, setIsResuming] = useState(false);
-  const MIN_RECORDING_DURATION = 2000; // 2 seconds minimum recording time
   const [transcriptionErrors, setTranscriptionErrors] = useState(0);
-  const [isValidatingModel, setIsValidatingModel] = useState(false);
   const [speechDetected, setSpeechDetected] = useState(false);
   const [deviceError, setDeviceError] = useState<{ title: string, message: string } | null>(null);
 
@@ -86,7 +85,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
   }, []);
 
   const handleStartRecording = useCallback(async () => {
-    if (isStarting || isValidatingModel) return;
+    if (isStarting) return;
     setIsStarting(true);
     console.log('Starting recording...');
     console.log('Selected devices:', selectedDevices);
@@ -98,11 +97,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
     setSpeechDetected(false); // Reset speech detection on new recording
 
     try {
-      // Call the validation callback which will:
-      // 1. Check if model is ready
-      // 2. Show appropriate toast/modal
-      // 3. Call backend if valid
-      // 4. Update UI state
+      // Start capture only; speech models are used by the saved-meeting Transcribe action.
       await onRecordingStart();
     } catch (error) {
       console.error('Failed to start recording:', error);
@@ -140,7 +135,7 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
     } finally {
       setIsStarting(false);
     }
-  }, [onRecordingStart, isStarting, isValidatingModel, selectedDevices, meetingName, isRecording]);
+  }, [onRecordingStart, isStarting, selectedDevices, meetingName, isRecording]);
 
   const stopRecordingAction = useCallback(async () => {
     console.log('Executing stop recording...');
@@ -403,11 +398,11 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
 
                             handleStartRecording();
                           }}
-                          disabled={isStarting || isProcessing || isRecordingDisabled || isValidatingModel}
-                          className={`w-12 h-12 flex items-center justify-center ${isStarting || isProcessing || isValidatingModel ? 'bg-gray-400' : 'bg-red-500 hover:bg-red-600'
+                          disabled={isStarting || isProcessing || isRecordingDisabled}
+                          className={`w-12 h-12 flex items-center justify-center ${isStarting || isProcessing ? 'bg-gray-400' : 'bg-red-500 hover:bg-red-600'
                             } rounded-full text-white transition-colors relative`}
                         >
-                          {isStarting || isValidatingModel ? (
+                          {isStarting ? (
                             <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                           ) : (
                             <Mic size={20} />
@@ -508,13 +503,6 @@ export const RecordingControls: React.FC<RecordingControlsProps> = ({
             </>
           )}
         </div>
-
-        {/* Show validation status only */}
-        {isValidatingModel && (
-          <div className="text-xs text-gray-600 text-center mt-2">
-            Validating speech recognition...
-          </div>
-        )}
 
         {/* Device error alert */}
         {deviceError && (

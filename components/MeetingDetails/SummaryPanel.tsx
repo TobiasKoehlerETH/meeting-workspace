@@ -2,7 +2,8 @@
 
 import { Summary, SummaryResponse, Transcript } from '@/types';
 import { EditableTitle } from '@/components/EditableTitle';
-import { BlockNoteSummaryView, BlockNoteSummaryViewRef } from '@/components/AISummary/BlockNoteSummaryView';
+import { Suspense, lazy } from 'react';
+import type { BlockNoteSummaryViewRef } from '@/components/AISummary/BlockNoteSummaryView';
 import { EmptyStateSummary } from '@/components/EmptyStateSummary';
 import { ModelConfig } from '@/components/ModelSettingsModal';
 import { SummaryGeneratorButtonGroup } from './SummaryGeneratorButtonGroup';
@@ -20,6 +21,9 @@ import {
   saveMeetingSummaryLanguage,
   SummaryLanguageStorage,
 } from '@/lib/summary-language-preferences';
+
+const BlockNoteSummaryView = lazy(() => import('@/components/AISummary/BlockNoteSummaryView')
+  .then(module => ({ default: module.BlockNoteSummaryView })));
 
 interface SummaryPanelProps {
   meeting: {
@@ -411,6 +415,7 @@ export function SummaryPanel({
             </div>
           )}
           <div className="p-6 w-full">
+            <Suspense fallback={<p className="text-sm text-gray-500">Loading summary editor...</p>}>
             <BlockNoteSummaryView
               ref={summaryRef}
               summaryData={aiSummary}
@@ -420,7 +425,7 @@ export function SummaryPanel({
               status={summaryStatus}
               error={summaryError}
               onRegenerateSummary={() => {
-                
+
                 onRegenerateSummary();
               }}
               meeting={{
@@ -429,6 +434,7 @@ export function SummaryPanel({
                 created_at: meeting.created_at
               }}
             />
+            </Suspense>
           </div>
           {summaryStatus !== 'idle' && (
             <div className={`mt-4 p-4 rounded-lg ${summaryStatus === 'error' ? 'bg-red-100 text-red-700' :

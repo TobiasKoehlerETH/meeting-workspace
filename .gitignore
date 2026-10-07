@@ -10,6 +10,7 @@ dist/
 src-tauri/binaries/
 src-tauri/logs/
 src-tauri/runtime/
+src-tauri/speaker-runtime/
 .env
 **/.env
 **/*.env

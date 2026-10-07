@@ -8,8 +8,7 @@ import { usePermissionCheck } from '@/hooks/usePermissionCheck';
 import { useRecordingState, RecordingStatus } from '@/contexts/RecordingStateContext';
 import { useTranscripts } from '@/contexts/TranscriptContext';
 import { useConfig } from '@/contexts/ConfigContext';
-import { StatusOverlays } from '@/app/_components/StatusOverlays';
-import { SettingsModals } from './_components/SettingsModal';
+import dynamic from 'next/dynamic';
 import { TranscriptPanel } from './_components/TranscriptPanel';
 import { useModalState } from '@/hooks/useModalState';
 import { useRecordingStateSync } from '@/hooks/useRecordingStateSync';
@@ -20,6 +19,8 @@ import { TranscriptRecovery } from '@/components/TranscriptRecovery';
 import { indexedDBService } from '@/services/indexedDBService';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
+
+const SettingsModals = dynamic(() => import('./_components/SettingsModal').then(module => module.SettingsModals), { ssr: false });
 
 export default function Home() {
   // Local page state (not moved to contexts)
@@ -196,11 +197,11 @@ export default function Home() {
       className="ap-recording-page flex flex-col h-screen bg-background"
     >
       {/* All Modals supported*/}
-      <SettingsModals
+      {Object.values(modals).some(Boolean) && <SettingsModals
         modals={modals}
         messages={messages}
         onClose={hideModal}
-      />
+      />}
 
       {/* Recovery Dialog */}
       <TranscriptRecovery
@@ -253,12 +254,6 @@ export default function Home() {
             </div>
           )}
 
-        {/* Status Overlays - Processing and Saving */}
-        <StatusOverlays
-          isProcessing={status === RecordingStatus.PROCESSING_TRANSCRIPTS && !recordingState.isRecording}
-          isSaving={status === RecordingStatus.SAVING}
-          sidebarCollapsed={sidebarCollapsed}
-        />
       </div>
     </motion.div>
   );

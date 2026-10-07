@@ -32,6 +32,16 @@ function MeetingDetailsContent() {
   const [shouldAutoGenerate, setShouldAutoGenerate] = useState<boolean>(false);
   const [hasCheckedAutoGen, setHasCheckedAutoGen] = useState<boolean>(false);
 
+  useEffect(() => {
+    const transcribed = (event: Event) => {
+      if ((event as CustomEvent<{ meetingId: string }>).detail.meetingId === meetingId && isAutoSummary) {
+        setShouldAutoGenerate(true);
+      }
+    };
+    window.addEventListener('meeting-transcribed', transcribed);
+    return () => window.removeEventListener('meeting-transcribed', transcribed);
+  }, [meetingId, isAutoSummary]);
+
   // Use pagination hook for efficient transcript loading
   const {
     metadata,
@@ -46,19 +56,6 @@ function MeetingDetailsContent() {
     refetch,
     error: transcriptError,
   } = usePaginatedTranscripts({ meetingId: meetingId || '' });
-
-  // Check if gemma3:1b model is available in Ollama
-  const checkForGemmaModel = useCallback(async (): Promise<boolean> => {
-    try {
-      const models = await invoke('get_ollama_models', { endpoint: null }) as any[];
-      const hasGemma = models.some((m: any) => m.name === 'gemma3:1b');
-      console.log('🔍 Checked for gemma3:1b:', hasGemma);
-      return hasGemma;
-    } catch (error) {
-      console.error('❌ Failed to check Ollama models:', error);
-      return false;
-    }
-  }, []);
 
   // Set up auto-generation - respects DB as source of truth
   const setupAutoGeneration = useCallback(async () => {
@@ -90,30 +87,16 @@ function MeetingDetailsContent() {
         return;
       }
 
-      // DB is empty - check if gemma3:1b exists as fallback
-      const hasGemma = await checkForGemmaModel();
-
-      if (hasGemma) {
-        console.log('💾 DB empty, using gemma3:1b as initial default');
-
-        await invoke('api_save_model_config', {
-          provider: 'ollama',
-          model: '',
-          whisperModel: 'large-v3',
-          apiKey: null,
-          ollamaEndpoint: null,
-        });
-
-        setShouldAutoGenerate(true);
-      } else {
-        console.log('⚠️ No model configured and gemma3:1b not found');
-      }
+      await invoke('api_save_model_config', {
+        provider: 'builtin-ai', model: 'qwen3.5:4b', whisperModel: 'large-v3', apiKey: null,
+      });
+      setShouldAutoGenerate(true);
     } catch (error) {
       console.error('❌ Failed to setup auto-generation:', error);
     }
 
     setHasCheckedAutoGen(true);
-  }, [hasCheckedAutoGen, checkForGemmaModel, source, isAutoSummary]);
+  }, [hasCheckedAutoGen, source, isAutoSummary]);
 
   // Sync meeting metadata from pagination hook to meeting details state
   useEffect(() => {
@@ -187,7 +170,7 @@ function MeetingDetailsContent() {
       console.warn('No valid meeting ID in URL - meetingId:', meetingId);
       setError("No meeting selected");
       setIsLoading(false);
-      
+
       return;
     }
 

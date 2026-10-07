@@ -3,7 +3,6 @@
 import { useCallback, useRef, useReducer, startTransition, useEffect, useState, memo } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAutoScroll } from "@/hooks/useAutoScroll";
-import { useTranscriptStreaming } from "@/hooks/useTranscriptStreaming";
 import { ConfidenceIndicator } from "./ConfidenceIndicator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "./ui/tooltip";
 import { RecordingStatusBar } from "./RecordingStatusBar";
@@ -50,24 +49,14 @@ function formatRecordingTime(seconds: number | undefined): string {
     return `[${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}]`;
 }
 
-// Helper function to remove filler words and repetitions
-function cleanStopWords(text: string): string {
-    const stopWords = ['uh', 'um', 'er', 'ah', 'hmm', 'hm', 'eh', 'oh'];
 
-    let cleanedText = text;
-    stopWords.forEach(word => {
-        const pattern = new RegExp(`\\b${word}\\b[,\\s]*`, 'gi');
-        cleanedText = cleanedText.replace(pattern, ' ');
-    });
-
-    return cleanedText.replace(/\s+/g, ' ').trim();
-}
 
 // Memoized transcript segment component
 const TranscriptSegment = memo(function TranscriptSegment({
     id,
     timestamp,
     text,
+    speaker,
     confidence,
     isStreaming,
     showConfidence,
@@ -75,11 +64,12 @@ const TranscriptSegment = memo(function TranscriptSegment({
     id: string;
     timestamp: number;
     text: string;
+    speaker?: string | null;
     confidence?: number;
     isStreaming: boolean;
     showConfidence: boolean;
 }) {
-    const displayText = cleanStopWords(text) || (text.trim() === '' ? '[Silence]' : text);
+    const displayText = text.trim() === '' ? '[Silence]' : text;
 
     return (
         <div id={`segment-${id}`} className="mb-3">
@@ -97,6 +87,7 @@ const TranscriptSegment = memo(function TranscriptSegment({
                     </TooltipContent>
                 </Tooltip>
                 <div className="flex-1">
+                    {speaker && <p className="mb-1 text-xs font-semibold text-gray-600">{speaker}</p>}
                     {isStreaming ? (
                         <div className="bg-gray-100 border border-gray-200 rounded-lg px-3 py-2">
                             <p className="text-base text-gray-800 leading-relaxed">{displayText}</p>
@@ -156,13 +147,6 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
         virtualizationThreshold: VIRTUALIZATION_THRESHOLD,
         disableAutoScroll,
     });
-
-    // Streaming text effect hook (typewriter animation for new transcripts)
-    const { streamingSegmentId, getDisplayText } = useTranscriptStreaming(
-        segments,
-        isRecording,
-        enableStreaming
-    );
 
     // Infinite scroll: IntersectionObserver to trigger loading more
     useEffect(() => {
@@ -249,10 +233,10 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                 <div className={`w-3 h-3 rounded-full ${isPaused ? 'bg-orange-500' : 'bg-blue-500 animate-pulse'}`}></div>
                             </div>
                             <p className="text-sm text-gray-600">
-                                {isPaused ? 'Recording paused' : 'Listening for speech...'}
+                                {isPaused ? 'Recording paused' : 'Recording audio'}
                             </p>
                             <p className="text-xs mt-1 text-gray-400">
-                                {isPaused ? 'Click resume to continue recording' : 'Speak to see live transcription'}
+                                {isPaused ? 'Click resume to continue recording' : 'Audio is saved first. Transcribe it later from the saved meeting.'}
                             </p>
                         </>
                     ) : (
@@ -276,7 +260,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                     >
                         {virtualizer.getVirtualItems().map((virtualRow) => {
                             const segment = segments[virtualRow.index];
-                            const isStreaming = streamingSegmentId === segment.id;
+                            const isStreaming = false;
 
                             return (
                                 <div
@@ -294,7 +278,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                     <TranscriptSegment
                                         id={segment.id}
                                         timestamp={segment.timestamp}
-                                        text={getDisplayText(segment)}
+                                        text={segment.text}
+                                        speaker={segment.speaker}
                                         confidence={segment.confidence}
                                         isStreaming={isStreaming}
                                         showConfidence={showConfidence}
@@ -338,7 +323,7 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                 <>
                     <div className="space-y-1">
                         {segments.map((segment) => {
-                            const isStreaming = streamingSegmentId === segment.id;
+                            const isStreaming = false;
 
                             return (
                                 <motion.div
@@ -350,7 +335,8 @@ export const VirtualizedTranscriptView: React.FC<VirtualizedTranscriptViewProps>
                                     <TranscriptSegment
                                         id={segment.id}
                                         timestamp={segment.timestamp}
-                                        text={getDisplayText(segment)}
+                                        text={segment.text}
+                                        speaker={segment.speaker}
                                         confidence={segment.confidence}
                                         isStreaming={isStreaming}
                                         showConfidence={showConfidence}

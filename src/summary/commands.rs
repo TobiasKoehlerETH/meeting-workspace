@@ -335,9 +335,16 @@ pub async fn api_process_transcript<R: Runtime>(
     custom_prompt: Option<String>,
     template_id: Option<String>,
     summary_language: Option<String>,
+    summary_lines: Option<u32>,
     _auth_token: Option<String>,
 ) -> Result<ProcessTranscriptResponse, String> {
     use uuid::Uuid;
+    if model != "builtin-ai" {
+        return Err("Select a built-in local summary model in Settings > Summary.".into());
+    }
+    let summary_lines = super::length::validate_summary_lines(summary_lines)?;
+    if text.trim().is_empty() { return Err("Create a transcript before generating a summary.".into()); }
+
 
     let m_id = meeting_id.unwrap_or_else(|| format!("meeting-{}", Uuid::new_v4()));
     log_info!(
@@ -347,7 +354,8 @@ pub async fn api_process_transcript<R: Runtime>(
     );
 
     let pool = state.db_manager.pool().clone();
-    let final_prompt = custom_prompt.unwrap_or_else(|| "".to_string());
+    // Including length in the cache key prevents reuse after changing this preference.
+    let final_prompt = format!("{}\nSummary line limit: {}", custom_prompt.unwrap_or_default(), summary_lines);
     let final_template_id = template_id.unwrap_or_else(|| "daily_standup".to_string());
 
     // Normalise empty / whitespace-only to None so "" and null behave identically
@@ -394,6 +402,7 @@ pub async fn api_process_transcript<R: Runtime>(
             final_prompt,
             final_template_id,
             summary_language,
+            summary_lines,
         )
         .await;
     });

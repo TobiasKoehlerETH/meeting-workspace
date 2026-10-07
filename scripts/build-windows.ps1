@@ -1,8 +1,18 @@
-param([switch]$NativeOnly, [switch]$AppOnly, [switch]$TestTranscription)
+param([switch]$NativeOnly, [switch]$AppOnly, [switch]$TestTranscription, [switch]$TestUnit, [switch]$TestHelper, [switch]$TestSummary, [switch]$TestSpeakers)
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
+
+$buildTools = @(
+    '.build-tools\Scripts\cmake.exe',
+    '.build-tools\Lib\site-packages\clang\native\libclang.dll'
+)
+foreach ($toolPath in $buildTools) {
+    if (-not (Test-Path -LiteralPath (Join-Path $projectRoot $toolPath))) {
+        throw "Missing build dependency: $toolPath. Follow the CMake and libclang setup in BUILD-WINDOWS.md."
+    }
+}
 
 $developerCommand = 'C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\Tools\VsDevCmd.bat'
 if (-not (Test-Path -LiteralPath $developerCommand)) {
@@ -29,17 +39,70 @@ $redistVersion = Get-ChildItem -LiteralPath $redistRoot -Directory |
 if (-not $redistVersion) { throw 'The MSVC redistributable files are missing from the build tools.' }
 New-Item -ItemType Directory -Force src-tauri\runtime | Out-Null
 Get-ChildItem -LiteralPath (Join-Path $redistVersion.FullName 'x64') -Recurse -File -Filter '*.dll' |
-    Copy-Item -Destination src-tauri\runtime
+    ForEach-Object {
+        $destination = Join-Path $projectRoot ('src-tauri\runtime\' + $_.Name)
+        if (-not (Test-Path -LiteralPath $destination) -or
+            (Get-FileHash -LiteralPath $_.FullName).Hash -ne (Get-FileHash -LiteralPath $destination).Hash) {
+            Copy-Item -LiteralPath $_.FullName -Destination $destination
+        }
+    }
+
+if (-not $NativeOnly -and -not $TestHelper) {
+    & .\.build-tools\Scripts\python.exe scripts\prepare-speaker-runtime.py
+    if ($LASTEXITCODE -ne 0) { throw 'Local speaker runtime preparation failed.' }
+}
+
+if ($TestSummary) {
+    & $PSCommandPath -NativeOnly
+    $env:MEETING_WORKSPACE_LLAMA_HELPER = Join-Path $projectRoot 'src-tauri\binaries\llama-helper-x86_64-pc-windows-msvc.exe'
+    cargo test --release --locked -p meeting-workspace --lib local_summary_respects_requested_line_limits --target-dir target/windows-app -- --ignored --nocapture
+    if ($LASTEXITCODE -ne 0) { throw 'Local summary inference checks failed.' }
+    return
+}
+
+if ($TestHelper) {
+    cargo test --release --locked -p llama-helper
+    if ($LASTEXITCODE -ne 0) { throw 'Local summary helper tests failed.' }
+    return
+}
+
+if ($TestUnit -or $TestTranscription -or $TestSpeakers -or $AppOnly) {
+    # Tauri validates bundled resources even when compiling native unit tests.
+    & $PSCommandPath -NativeOnly
+}
+
+if ($TestUnit) {
+    cargo test --release --locked -p meeting-workspace --lib --target-dir target/windows-app
+    if ($LASTEXITCODE -ne 0) { throw 'Native unit tests failed.' }
+    return
+}
+
+if ($TestSpeakers) {
+    $fixture = Join-Path $projectRoot '.build-tools\speakers\four-speakers.wav'
+    $expectedHash = 'BEDF036CAED208386C67B4EF4B11F83D74DD0D420B102163A1C33CD09CDE7010'
+    if (-not (Test-Path -LiteralPath $fixture)) {
+        Invoke-WebRequest 'https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/0-four-speakers-zh.wav' -OutFile $fixture
+    }
+    if ((Get-FileHash -LiteralPath $fixture).Hash -ne $expectedHash) { throw 'Speaker fixture checksum mismatch.' }
+    cargo test --release --locked -p meeting-workspace --lib local_four_speaker_smoke --target-dir target/windows-app -- --ignored --nocapture
+    if ($LASTEXITCODE -ne 0) { throw 'Local speaker inference check failed.' }
+    return
+}
 
 if ($TestTranscription) {
-    cargo test --release --locked -p meeting-workspace --lib audio::transcription::openrouter_provider::tests --target-dir target/windows-app
-    if ($LASTEXITCODE -ne 0) { throw 'API transcription checks failed.' }
-    cargo test --release --locked -p meeting-workspace --lib config::language_tests --target-dir target/windows-app
-    if ($LASTEXITCODE -ne 0) { throw 'Transcription language checks failed.' }
-    cargo test --release --locked -p meeting-workspace --lib audio::vad::speed_tests --target-dir target/windows-app -- --nocapture
-    if ($LASTEXITCODE -ne 0) { throw 'Recording preparation checks failed.' }
-    cargo test --release --locked -p meeting-workspace --lib audio::incremental_saver::original_audio_tests --target-dir target/windows-app -- --nocapture
-    if ($LASTEXITCODE -ne 0) { throw 'Original WAV preservation checks failed.' }
+    $env:MEETING_WORKSPACE_SPEECH_FIXTURE = Join-Path $projectRoot '.build-tools\transcription-smoke.wav'
+    powershell.exe -NoProfile -NonInteractive -Command {
+        Add-Type -AssemblyName System.Speech
+        $speaker = New-Object System.Speech.Synthesis.SpeechSynthesizer
+        try {
+            $speaker.SetOutputToWaveFile($env:MEETING_WORKSPACE_SPEECH_FIXTURE)
+            $speaker.Speak('This is a test of meeting transcription.')
+        } finally {
+            $speaker.Dispose()
+        }
+    }
+    if ($LASTEXITCODE -ne 0) { throw 'Could not create the synthetic transcription test audio.' }
+    # Mixer, VAD, language, and WAV checks are already covered by -TestUnit.
     cargo test --release --locked -p meeting-workspace --lib parakeet_final_pass_from_original_speech --target-dir target/windows-app -- --ignored --nocapture
     if ($LASTEXITCODE -ne 0) { throw 'Local Parakeet final-pass check failed.' }
     return
@@ -52,14 +115,16 @@ if ($AppOnly) {
 }
 
 if ($NativeOnly) {
-    cargo build --release --locked -p nemotron-helper --target-dir target/nemotron-helper
-    if ($LASTEXITCODE -ne 0) { throw 'The local streaming speech helper failed to build.' }
-    New-Item -ItemType Directory -Force src-tauri\binaries | Out-Null
-    Copy-Item -LiteralPath target\nemotron-helper\release\nemotron-helper.exe -Destination src-tauri\binaries\nemotron-helper-x86_64-pc-windows-msvc.exe
     cargo build --release --locked -p llama-helper
     if ($LASTEXITCODE -ne 0) { throw 'The local summary helper failed to build.' }
     New-Item -ItemType Directory -Force src-tauri\binaries | Out-Null
-    Copy-Item -LiteralPath target\release\llama-helper.exe -Destination src-tauri\binaries\llama-helper-x86_64-pc-windows-msvc.exe
+    $helperSource = Join-Path $projectRoot 'target\release\llama-helper.exe'
+    $helperDestination = Join-Path $projectRoot 'src-tauri\binaries\llama-helper-x86_64-pc-windows-msvc.exe'
+    # An unchanged resource must not trigger another full native compilation.
+    if (-not (Test-Path -LiteralPath $helperDestination) -or
+        (Get-FileHash -LiteralPath $helperSource).Hash -ne (Get-FileHash -LiteralPath $helperDestination).Hash) {
+        Copy-Item -LiteralPath $helperSource -Destination $helperDestination
+    }
     return
 }
 

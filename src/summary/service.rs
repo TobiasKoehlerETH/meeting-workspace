@@ -301,6 +301,7 @@ impl SummaryService {
         custom_prompt: String,
         template_id: String,
         summary_language: Option<String>,
+        summary_lines: u32,
     ) {
         let start_time = Instant::now();
         info!(
@@ -418,8 +419,9 @@ impl SummaryService {
 
             match model {
                 Ok(model_def) => {
-                    // Reserve 300 tokens for prompt overhead
-                    let optimal = model_def.context_size.saturating_sub(300) as usize;
+                    // Reserve generation space as well as prompt instructions.
+                    let optimal = model_def.context_size
+                        .saturating_sub(models::DEFAULT_MAX_TOKENS as u32 + 1200) as usize;
                     info!(
                         "✓ Using BuiltInAI context size: {} tokens (chunk size: {})",
                         model_def.context_size, optimal
@@ -525,6 +527,7 @@ impl SummaryService {
             summary_language.as_deref(),
             detected_summary_language.as_deref(),
             cached_english.as_deref(),
+            summary_lines,
         )
         .await;
 

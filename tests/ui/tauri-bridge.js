@@ -12,16 +12,17 @@
     { id: 'qa-review', title: 'QA Design Review', created_at: now, updated_at: now, folder_path: root + '\\recordings\\qa-review' },
   ];
   const transcripts = [
-    { id: 'qa-segment-1', text: 'We will review the interface and confirm the next steps.', timestamp: '00:00', audio_start_time: 0, audio_end_time: 12, confidence: 0.94 },
-    { id: 'qa-segment-2', text: 'The team agreed to improve navigation and test every control.', timestamp: '00:12', audio_start_time: 12, audio_end_time: 24, confidence: 0.96 },
+    { id: 'qa-segment-1', speaker: 'Speaker 1', text: 'We will review the interface and confirm the next steps.', timestamp: '00:00', audio_start_time: 0, audio_end_time: 12, confidence: 0.94 },
+    { id: 'qa-segment-2', speaker: 'Speaker 2', text: 'The team agreed to improve navigation and test every control.', timestamp: '00:12', audio_start_time: 12, audio_end_time: 24, confidence: 0.96 },
   ];
-  let modelConfig = { provider: 'openrouter', model: 'google/gemini-2.5-flash-lite', whisperModel: 'base', apiKey: 'qa-placeholder-key', ollamaEndpoint: null };
-  let transcriptConfig = { provider: 'openrouter', model: 'openai/whisper-large-v3-turbo', apiKey: 'qa-placeholder-key' };
-  if (scenario === 'local-pipeline') transcriptConfig = { provider: 'nemotron-parakeet', model: 'nemotron-3.5-streaming-int8', apiKey: null };
+  let modelConfig = { provider: 'builtin-ai', model: 'qwen3.5:4b', whisperModel: 'base', apiKey: 'qa-placeholder-key', ollamaEndpoint: null };
+  let transcriptConfig = { provider: 'localWhisper', model: 'large-v3', apiKey: 'qa-placeholder-key' };
   let preferences = { save_folder: root + '\\recordings', auto_save: true, file_format: 'mp4', preferred_mic_device: null, preferred_system_device: null };
   let recording = false;
   let paused = false;
   let meetingName = null;
+  const launchPreferences = { start_minimized: false, stealth_mode: false };
+  let speakerSettings = { enabled: true, speaker_count: 0 };
   const notificationSettings = { recording_notifications: true, time_based_reminders: false, meeting_reminders: false, respect_do_not_disturb: true, notification_sound: false, system_permission_granted: true, consent_given: true, manual_dnd_mode: false, notification_preferences: { show_recording_started: true, show_recording_stopped: true, show_recording_paused: true, show_recording_resumed: true, show_transcription_complete: true, show_meeting_reminders: false, show_system_errors: true, meeting_reminder_minutes: [15] } };
   const available = scenario !== 'no-models';
   const models = {
@@ -70,9 +71,24 @@
       if (command === 'get_onboarding_status') return scenario === 'onboarding' ? null : { completed: true, current_step: 3, permissions: { microphone: 'authorized', systemAudio: 'authorized' }, model_status: { parakeet: 'downloaded', summary: 'downloaded', selected_summary_model: 'qwen3-0.6b' } };
       if (command === 'check_first_launch') return false;
       if (command === 'prepare_recording') return null;
-      if (command === 'get_local_pipeline_status') return { nemotron: true, parakeet: true };
-      if (command === 'download_nemotron_model') return null;
-      if (command === 'finalize_local_transcript') { document.documentElement.dataset.qaFinalPass = args.meetingId; return { status: 'final', segments: 2 }; }
+      if (command === 'get_speaker_settings') return speakerSettings;
+      if (command === 'set_speaker_settings') { speakerSettings = args.settings; return null; }
+      if (command === 'list_meeting_speakers') return [...new Set(transcripts.map(t => t.speaker).filter(Boolean))];
+      if (command === 'rename_meeting_speaker') { transcripts.forEach(t => { if (t.speaker === args.speaker) t.speaker = args.name; }); return null; }
+      if (command === 'get_start_minimized') return launchPreferences.start_minimized;
+      if (command === 'get_stealth_mode') return launchPreferences.stealth_mode;
+      if (command === 'set_start_minimized') { launchPreferences.start_minimized = args.enabled; return null; }
+      if (command === 'set_stealth_mode') { launchPreferences.stealth_mode = args.enabled; return null; }
+      if (command === 'is_stealth_mode_active') return scenario === 'stealth';
+      if (command === 'finalize_local_transcript') {
+        document.documentElement.dataset.qaFinalPass = args.meetingId;
+        for (const [progress_percentage, message] of [[5, 'Decoding audio…'], [20, 'Detecting speakers locally…'], [55, 'Transcribing segment 2 of 4…'], [90, 'Saving transcript…']]) {
+          emit('retranscription-progress', { meeting_id: args.meetingId, progress_percentage, message });
+          await new Promise(resolve => setTimeout(resolve, 400));
+        }
+        return { status: 'final', segments: 2 };
+      }
+      if (command === 'get_meeting_audio_path') return root + '\\recordings\\' + args.meetingId + '\\recording.wav';
       if (['save_onboarding_status_cmd', 'complete_onboarding', 'initialize_fresh_database', 'import_and_initialize_database'].includes(command)) return null;
       if (command === 'api_get_model_config') return modelConfig;
       if (command === 'api_save_model_config') { modelConfig = { ...modelConfig, ...args }; return { status: 'success' }; }
@@ -102,13 +118,6 @@
         if (scenario === 'slow-start') await new Promise(resolve => setTimeout(resolve, 3000));
         if ('mic_device_name' in args || 'meeting_name' in args) throw new Error('Recording command expects camelCase argument keys.');
         recording = true; paused = false; meetingName = args.meetingName || 'QA Recording';
-        if (transcriptConfig.provider === 'nemotron-parakeet') {
-          setTimeout(() => emit('nemotron-partial', { text: 'We will review the next steps.', final: false }), 100);
-          setTimeout(() => {
-            emit('nemotron-partial', { text: '', final: true });
-            emit('transcript-update', { text: 'We will review the next steps.', timestamp: '00:00', source: 'Nemotron live', sequence_id: 1, chunk_start_time: 0, is_partial: false, confidence: 0, audio_start_time: 0, audio_end_time: 2, duration: 2 });
-          }, 500);
-        }
         setTimeout(() => emit('recording-started', null), 20); return null;
       }
       if (command === 'pause_recording') { paused = true; emit('recording-paused', null); return null; }

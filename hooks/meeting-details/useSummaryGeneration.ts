@@ -1,3 +1,4 @@
+import { getSummaryLines } from '@/lib/summary-length';
 import { useState, useCallback } from 'react';
 import { Transcript, Summary } from '@/types';
 import { ModelConfig } from '@/components/ModelSettingsModal';
@@ -121,11 +122,11 @@ export function useSummaryGeneration({
       const timeSinceRecording = (Date.now() - new Date(meeting.created_at).getTime()) / 60000; // minutes
 
       // Track summary generation started
-      
+
 
       // Track custom prompt usage if present
       if (customPrompt.trim().length > 0) {
-        
+
       }
 
       // Show toast notification for generation start
@@ -151,6 +152,7 @@ export function useSummaryGeneration({
         customPrompt: customPrompt,
         templateId: selectedTemplate,
         summaryLanguage,
+        summaryLines: getSummaryLines(),
       }) as any;
 
       const process_id = result.process_id;
@@ -209,7 +211,7 @@ export function useSummaryGeneration({
                   description: `${errorMessage}. Your previous summary has been restored.`,
                 });
 
-                
+
                 return;
               }
             } catch (error) {
@@ -239,7 +241,7 @@ export function useSummaryGeneration({
             onOpenModelSettings();
           }
 
-          
+
           return;
         }
 
@@ -269,7 +271,7 @@ export function useSummaryGeneration({
               await onMeetingUpdated();
             }
 
-            
+
             return;
           }
 
@@ -282,7 +284,7 @@ export function useSummaryGeneration({
             setSummaryError('Summary generation completed but returned empty content.');
             setSummaryStatus('error');
 
-            
+
             return;
           }
 
@@ -329,7 +331,7 @@ export function useSummaryGeneration({
             duration: 4000,
           });
 
-          
+
 
           if (meetingName && onMeetingUpdated) {
             await onMeetingUpdated();
@@ -347,7 +349,7 @@ export function useSummaryGeneration({
         description: errorMessage,
       });
 
-      
+
     }
   }, [
     meeting.id,
@@ -408,7 +410,7 @@ export function useSummaryGeneration({
 
     return {
       transcriptText: allTranscripts
-        .map(t => `${formatTime(t.audio_start_time, t.timestamp)} ${t.text}`)
+        .map(t => `${formatTime(t.audio_start_time, t.timestamp)} ${t.speaker ? `${t.speaker}: ` : ''}${t.text}`)
         .join('\n'),
       transcriptTexts: allTranscripts.map(t => t.text),
     };

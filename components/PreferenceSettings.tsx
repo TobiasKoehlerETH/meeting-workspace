@@ -1,10 +1,11 @@
 "use client"
 
-import { useEffect, useState, useRef } from "react"
+import { useEffect, useState } from "react"
 import { Switch } from "./ui/switch"
 import { FolderOpen } from "lucide-react"
 import { invoke } from "@tauri-apps/api/core"
 import { useConfig, NotificationSettings } from "@/contexts/ConfigContext"
+import { LaunchSettings } from './LaunchSettings';
 
 export function PreferenceSettings() {
   const {
@@ -18,33 +19,11 @@ export function PreferenceSettings() {
   const [notificationsEnabled, setNotificationsEnabled] = useState<boolean | null>(null);
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [previousNotificationsEnabled, setPreviousNotificationsEnabled] = useState<boolean | null>(null);
-  const hasTrackedViewRef = useRef(false);
 
   // Lazy load preferences on mount (only loads if not already cached)
   useEffect(() => {
     loadPreferences();
-    // Reset tracking ref on mount (every tab visit)
-    hasTrackedViewRef.current = false;
   }, [loadPreferences]);
-
-  // Track preferences viewed analytics on every tab visit (once per mount)
-  useEffect(() => {
-    if (hasTrackedViewRef.current) return;
-
-    const trackPreferencesViewed = async () => {
-      // Wait for notification settings to be available (either from cache or after loading)
-      if (notificationSettings) {
-
-        hasTrackedViewRef.current = true;
-      } else if (!isLoadingPreferences) {
-        // If not loading and no settings available, track with default value
-
-        hasTrackedViewRef.current = true;
-      }
-    };
-
-    trackPreferencesViewed();
-  }, [notificationSettings, isLoadingPreferences]);
 
   // Update notificationsEnabled when notificationSettings are loaded from global state
   useEffect(() => {
@@ -92,7 +71,6 @@ export function PreferenceSettings() {
         setPreviousNotificationsEnabled(notificationsEnabled);
         console.log("Successfully updated notification settings to:", notificationsEnabled);
 
-        // Track notification preference change - only fires when user manually toggles
 
       } catch (error) {
         console.error('Failed to update notification settings:', error);
@@ -116,7 +94,6 @@ export function PreferenceSettings() {
           break;
       }
 
-      // Track storage folder access
 
     } catch (error) {
       console.error(`Failed to open ${folderType} folder:`, error);
@@ -138,6 +115,7 @@ export function PreferenceSettings() {
 
   return (
     <div className="space-y-6">
+      <LaunchSettings />
       {/* Notifications Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
         <div className="flex items-center justify-between">
@@ -157,36 +135,6 @@ export function PreferenceSettings() {
         </p>
 
         <div className="space-y-4">
-          {/* Database Location */}
-          {/* <div className="p-4 border rounded-lg bg-gray-50">
-            <div className="font-medium mb-2">Database</div>
-            <div className="text-sm text-gray-600 mb-3 break-all font-mono text-xs">
-              {storageLocations?.database || 'Loading...'}
-            </div>
-            <button
-              onClick={() => handleOpenFolder('database')}
-              className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
-            >
-              <FolderOpen className="w-4 h-4" />
-              Open Folder
-            </button>
-          </div> */}
-
-          {/* Models Location */}
-          {/* <div className="p-4 border rounded-lg bg-gray-50">
-            <div className="font-medium mb-2">Whisper Models</div>
-            <div className="text-sm text-gray-600 mb-3 break-all font-mono text-xs">
-              {storageLocations?.models || 'Loading...'}
-            </div>
-            <button
-              onClick={() => handleOpenFolder('models')}
-              className="flex items-center gap-2 px-3 py-2 text-sm border border-gray-300 rounded-md hover:bg-gray-100 transition-colors"
-            >
-              <FolderOpen className="w-4 h-4" />
-              Open Folder
-            </button>
-          </div> */}
-
           {/* Recordings Location */}
           <div className="p-4 border rounded-lg bg-gray-50">
             <div className="font-medium mb-2">Recordings</div>

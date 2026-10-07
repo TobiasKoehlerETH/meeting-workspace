@@ -1,5 +1,7 @@
 'use client';
 
+import { SummaryLengthSettings } from './SummaryLengthSettings';
+
 import { useState, useEffect, useCallback } from 'react';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
@@ -14,8 +16,8 @@ interface SummaryModelSettingsProps {
 
 export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsProps) {
   const [modelConfig, setModelConfig] = useState<ModelConfig>({
-    provider: 'openrouter',
-    model: 'google/gemini-2.5-flash-lite',
+    provider: 'builtin-ai',
+    model: 'qwen3.5:4b',
     whisperModel: 'large-v3',
     apiKey: null,
     ollamaEndpoint: null
@@ -128,18 +130,19 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
         <div className="flex items-center justify-between">
           <div>
             <h3 className="text-lg font-semibold text-gray-900 mb-2">Automatic summaries</h3>
-            <p className="text-sm text-gray-600">Create a summary after recording stops.</p>
+            <p className="text-sm text-gray-600">Create a local summary after you transcribe a saved recording.</p>
           </div>
           <Switch aria-label="Automatic summaries" checked={isAutoSummary} onCheckedChange={toggleIsAutoSummary} />
         </div>
       </div>
 
       <SummaryLanguageSettings />
+      <SummaryLengthSettings />
 
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
         <h3 className="text-lg font-semibold mb-4">Summary model</h3>
         <p className="text-sm text-gray-600 mb-6">
-          Choose the AI provider and model.
+          Choose a model to run on this device.
         </p>
 
         <ModelSettingsModal

@@ -40,27 +40,29 @@ pub struct DecodedAudio {
 }
 
 impl DecodedAudio {
-    /// Convert decoded audio to Whisper-compatible 16kHz mono f32 format.
+    /// Consume decoded audio and convert to 16kHz mono f32 format.
     ///
     /// Performs mono conversion, normalization, and resampling. Large files
     /// (>5 min at 48kHz) use chunked sinc resampling to keep memory bounded
     /// while preserving audio quality for downstream VAD and transcription.
-    pub fn to_whisper_format(&self) -> Vec<f32> {
-        self.to_whisper_format_with_progress(None)
+    pub fn into_whisper_format(self) -> Vec<f32> {
+        self.into_whisper_format_with_progress(None)
     }
 
-    /// Convert decoded audio to Whisper format with optional progress callback
-    pub fn to_whisper_format_with_progress(&self, progress_callback: Option<ProgressCallback>) -> Vec<f32> {
+    pub fn into_whisper_format_with_progress(self, progress_callback: Option<ProgressCallback>) -> Vec<f32> {
+        let samples = self.samples;
         // Step 1: Convert to mono if needed
         let mono_samples = if self.channels > 1 {
             info!(
                 "Converting {} channels to mono ({} samples)",
                 self.channels,
-                self.samples.len()
+                samples.len()
             );
-            audio_to_mono(&self.samples, self.channels)
+            let mono = audio_to_mono(&samples, self.channels);
+            drop(samples);
+            mono
         } else {
-            self.samples.clone()
+            samples
         };
 
         // Step 1.5: Normalize samples to valid range (-1.0 to 1.0)
@@ -582,6 +584,18 @@ mod tests {
     use super::*;
 
     #[test]
+    fn mono_conversion_reuses_the_buffer_and_sanitizes_invalid_samples() {
+        let samples = vec![0.5, -2.0, f32::NAN, f32::INFINITY];
+        let allocation = samples.as_ptr();
+        let audio = DecodedAudio {
+            samples, sample_rate: 16000, channels: 1, duration_seconds: 0.00025,
+        };
+        let result = audio.into_whisper_format();
+        assert_eq!(result.as_ptr(), allocation);
+        assert_eq!(result, vec![0.25, -1.0, 0.0, 0.0]);
+    }
+
+    #[test]
     fn test_to_whisper_format_mono_16k() {
         // Already in correct format
         let audio = DecodedAudio {
@@ -591,7 +605,7 @@ mod tests {
             duration_seconds: 0.0001875,
         };
 
-        let result = audio.to_whisper_format();
+        let result = audio.into_whisper_format();
         assert_eq!(result.len(), 3);
     }
 
@@ -605,7 +619,7 @@ mod tests {
             duration_seconds: 0.000125,
         };
 
-        let result = audio.to_whisper_format();
+        let result = audio.into_whisper_format();
         assert_eq!(result.len(), 2); // Should be mono now
         // Average of (0.2, 0.4) = 0.3 and (0.6, 0.8) = 0.7
         assert!((result[0] - 0.3).abs() < 0.001);
@@ -624,7 +638,7 @@ mod tests {
             duration_seconds: 4800.0 / 48000.0,
         };
 
-        let result = audio.to_whisper_format();
+        let result = audio.into_whisper_format();
         // Output length should be approximately input_len / 3 (16000/48000 ratio)
         // 4800 / 3 = 1600
         assert!(!result.is_empty(), "Result should not be empty");
@@ -757,7 +771,7 @@ mod tests {
             duration_seconds: 1000.0 / 48000.0,
         };
 
-        let result = audio.to_whisper_format();
+        let result = audio.into_whisper_format();
         // Should complete without error and produce valid output
         assert!(!result.is_empty());
         assert!(result.len() < 1000); // Downsampled

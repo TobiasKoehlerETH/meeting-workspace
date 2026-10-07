@@ -46,6 +46,7 @@ pub struct SpeechSegment {
     pub start_timestamp_ms: f64,
     pub end_timestamp_ms: f64,
     pub confidence: f32,
+    pub speaker: Option<String>,
 }
 
 /// Processes audio in 30ms chunks but returns complete speech segments
@@ -238,6 +239,7 @@ impl ContinuousVadProcessor {
                 samples: self.current_speech.clone(),
                 start_timestamp_ms: start_ms,
                 end_timestamp_ms: end_ms,
+                speaker: None,
                 confidence: 0.8, // Estimated confidence for forced end
             };
 
@@ -305,6 +307,7 @@ impl ContinuousVadProcessor {
                             samples: speech_samples,
                             start_timestamp_ms: start_timestamp_ms as f64,
                             end_timestamp_ms: end_timestamp_ms as f64,
+                            speaker: None,
                             confidence: 0.9, // VAD confidence
                         };
 

@@ -108,9 +108,9 @@ pub async fn check_default_legacy_database(app: AppHandle) -> Result<Option<Stri
 #[tauri::command]
 pub async fn check_homebrew_database(path: String) -> Result<Option<DatabaseCheckResult>, String> {
     let db_path = PathBuf::from(&path);
-    
+
     info!("Checking for Homebrew database at: {}", path);
-    
+
     // Check if file exists and is a regular file
     if db_path.exists() && db_path.is_file() {
         // Get file metadata to check size
@@ -118,7 +118,7 @@ pub async fn check_homebrew_database(path: String) -> Result<Option<DatabaseChec
             Ok(metadata) => {
                 let size = metadata.len();
                 info!("Found Homebrew database: {} ({} bytes)", path, size);
-                
+
                 // Only consider it valid if it has content (not empty)
                 if size > 0 {
                     Ok(Some(DatabaseCheckResult {
@@ -189,7 +189,7 @@ pub async fn initialize_fresh_database(app: AppHandle) -> Result<(), String> {
 
     // Set default model configuration for fresh installs
     let pool = db_manager.pool();
-    
+
     let default_summary_model = crate::summary::summary_engine::commands::get_recommended_summary_model_for_current_system()
         .unwrap_or("qwen3.5:2b");
 
@@ -198,17 +198,17 @@ pub async fn initialize_fresh_database(app: AppHandle) -> Result<(), String> {
         pool,
         "builtin-ai",
         default_summary_model,
-        "large-v3", // Default whisper model (unused for builtin but required)
+        crate::config::DEFAULT_WHISPER_MODEL,
         None,
     ).await {
         error!("Failed to set default summary model config: {}", e);
     }
 
-    // Default Transcription Model: Parakeet
+    // Use the same transcription model as onboarding.
     if let Err(e) = crate::database::repositories::setting::SettingsRepository::save_transcript_config(
         pool,
-        "parakeet",
-        crate::config::DEFAULT_PARAKEET_MODEL,
+        "localWhisper",
+        crate::config::DEFAULT_WHISPER_MODEL,
     ).await {
         error!("Failed to set default transcription model config: {}", e);
     }

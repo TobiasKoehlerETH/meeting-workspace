@@ -16,6 +16,21 @@ pub enum RecordingState {
     Stopping,
 }
 
+fn recording_status_label(state: &RecordingState, stealth: bool) -> &'static str {
+    if stealth {
+        return "Meeting Workspace";
+    }
+    match state {
+        RecordingState::Stopped => "Meeting Workspace — Not recording",
+        RecordingState::Starting => "Meeting Workspace — Starting recording",
+        RecordingState::Recording => "Meeting Workspace — Recording",
+        RecordingState::Pausing => "Meeting Workspace — Pausing recording",
+        RecordingState::Paused => "Meeting Workspace — Recording paused",
+        RecordingState::Resuming => "Meeting Workspace — Resuming recording",
+        RecordingState::Stopping => "Meeting Workspace — Saving recording",
+    }
+}
+
 pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
     // Start with default menu, will update with actual state after initialization
     // Pass can_record=true initially, will be updated by update_tray_menu immediately
@@ -23,7 +38,7 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
     TrayIconBuilder::with_id("main-tray")
         .menu(&menu)
-        .tooltip("Meeting Workspace")
+        .tooltip(recording_status_label(&RecordingState::Stopped, crate::startup::is_stealth(app)))
         .icon(app.default_window_icon().unwrap().clone())
         .on_menu_event(|app, event| handle_menu_event(app, event.id.as_ref()))
         .build(app)?;
@@ -47,68 +62,25 @@ fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, item_id: &str) {
                 let _ = window.eval("window.openSettings?.()");
             }
         }
-        "check_updates" => check_updates_handler(app),
         "quit" => app.exit(0),
         _ => {}
     }
 }
 fn toggle_recording_handler<R: Runtime>(app: &AppHandle<R>) {
-    focus_main_window(app);
+    if !crate::startup::is_stealth(app) {
+        focus_main_window(app);
+    }
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         if crate::is_recording().await {
-            // Immediately show stopping state
-            set_tray_state(&app_clone, RecordingState::Stopping);
-
-            log::info!("Tray toggle: Stopping recording...");
-
-            // Generate save path (same as RecordingControls.tsx)
-            let data_dir = match app_clone.path().app_data_dir() {
-                Ok(dir) => dir,
-                Err(e) => {
-                    log::error!("Failed to get app data dir: {}", e);
-                    update_tray_menu_async(&app_clone).await;
-                    return;
-                }
-            };
-
-            let timestamp = chrono::Local::now().format("%Y-%m-%dT%H-%M-%S").to_string();
-            let save_path = data_dir.join(format!("recording-{}.wav", timestamp));
-
-            // Call Rust stop_recording command (like pause/resume pattern)
-            let stop_result = crate::audio::recording_commands::stop_recording(
-                app_clone.clone(),
-                crate::audio::recording_commands::RecordingArgs {
-                    save_path: save_path.to_string_lossy().to_string(),
-                },
-            )
-            .await;
-
-            // Handle result
-            match stop_result {
-                Ok(_) => {
-                    log::info!("Tray toggle: Recording stopped successfully");
-
-                    // Trigger frontend post-processing via event (works from any page)
-                    // (SQLite save, navigation, analytics)
-                    if let Err(e) = app_clone.emit("recording-stop-complete", true) {
-                        log::error!("Tray toggle: Failed to emit recording-stop-complete event: {}", e);
-                    }
-                }
-                Err(e) => {
-                    log::error!("Tray toggle: Failed to stop recording: {}", e);
-                    // Revert tray state on error
-                    update_tray_menu_async(&app_clone).await;
-                }
-            }
+            stop_recording_handler(&app_clone);
         } else {
-            // Immediately show starting state
-            set_tray_state(&app_clone, RecordingState::Starting);
-
+            // The frontend may reject a start while saving or transcribing.
+            // Keep the actual tray state until capture confirms it has started.
             log::info!("Emitting start recording event from tray");
-            if let Some(window) = app_clone.get_webview_window("main") {
-                let _ = window.eval("sessionStorage.setItem('autoStartRecording', 'true')"); // Set the flag to start recording automatically
-                let _ = window.eval("window.location.assign('/')");
+            if let Err(error) = app_clone.emit("request-recording-toggle", ()) {
+                log::error!("Could not start recording from the tray: {}", error);
+                update_tray_menu_async(&app_clone).await;
             }
         }
     });
@@ -153,7 +125,9 @@ fn stop_recording_handler<R: Runtime>(app: &AppHandle<R>) {
     // Immediately show stopping state
     set_tray_state(app, RecordingState::Stopping);
 
-    focus_main_window(app);
+    if !crate::startup::is_stealth(app) {
+        focus_main_window(app);
+    }
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         log::info!("Tray: Stopping recording...");
@@ -200,15 +174,6 @@ fn stop_recording_handler<R: Runtime>(app: &AppHandle<R>) {
     });
 }
 
-fn check_updates_handler<R: Runtime>(app: &AppHandle<R>) {
-    focus_main_window(app);
-    if let Some(window) = app.get_webview_window("main") {
-        let _ = window.eval(
-            "window.dispatchEvent(new CustomEvent('check-updates-from-tray'))"
-        );
-    }
-}
-
 pub fn update_tray_menu<R: Runtime>(app: &AppHandle<R>) {
     // For sync update, spawn async task to get current state
     let app_clone = app.clone();
@@ -221,6 +186,9 @@ pub fn update_tray_menu<R: Runtime>(app: &AppHandle<R>) {
 
 pub fn set_tray_state<R: Runtime>(app: &AppHandle<R>, state: RecordingState) {
     log::info!("Tray: Setting intermediate state: {:?}", state);
+    if let Some(tray) = app.tray_by_id("main-tray") {
+        let _ = tray.set_tooltip(Some(recording_status_label(&state, crate::startup::is_stealth(app))));
+    }
     // During recording state transitions, we assume recording is allowed (we're already recording)
     if let Ok(menu) = build_menu(app, state, true) {
         if let Some(tray) = app.tray_by_id("main-tray") {
@@ -294,6 +262,9 @@ pub async fn update_tray_menu_async<R: Runtime>(app: &AppHandle<R>) {
     log::info!("Tray: update_tray_menu_async called");
     // Get the current recording state
     let recording_state = get_current_recording_state().await;
+    if let Some(tray) = app.tray_by_id("main-tray") {
+        let _ = tray.set_tooltip(Some(recording_status_label(&recording_state, crate::startup::is_stealth(app))));
+    }
     log::info!("Tray: Current recording state: {:?}", recording_state);
 
     // Determine if recording should be allowed
@@ -385,7 +356,6 @@ fn build_menu<R: Runtime>(
         .item(&PredefinedMenuItem::separator(app)?)
         .item(&MenuItemBuilder::with_id("open_window", "Open Main Window").build(app)?)
         .item(&MenuItemBuilder::with_id("settings", "Settings").build(app)?)
-        .item(&MenuItemBuilder::with_id("check_updates", "Check for Updates").build(app)?)
         .item(&PredefinedMenuItem::separator(app)?)
         .item(&MenuItemBuilder::with_id("quit", "Quit").build(app)?)
         .build()
@@ -410,5 +380,20 @@ pub(crate) fn focus_main_window<R: Runtime>(app: &AppHandle<R>) {
         }
     } else {
         log::warn!("Could not find main window");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn discreet_tooltip_is_neutral_during_every_recording_state() {
+        for state in [RecordingState::Stopped, RecordingState::Starting,
+            RecordingState::Recording, RecordingState::Pausing, RecordingState::Paused,
+            RecordingState::Resuming, RecordingState::Stopping] {
+            assert_eq!(recording_status_label(&state, true), "Meeting Workspace");
+            assert_ne!(recording_status_label(&state, false), "Meeting Workspace");
+        }
     }
 }

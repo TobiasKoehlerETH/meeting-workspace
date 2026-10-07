@@ -355,6 +355,11 @@ impl ModelState {
         let start_time = Instant::now();
         let model = self.model.as_ref().context("Model not loaded")?;
 
+        let tokens_list = model
+            .str_to_token(&prompt, AddBos::Always)
+            .with_context(|| "failed to tokenize prompt")?;
+        let context_size = generation_context_size(tokens_list.len(), max_tokens, self.context_size)?;
+
         // Calculate thread count (conservative default: max(1, (Cores / 2) + 2))
         // This ensures the UI thread is never starved
         let threads: i32 = std::thread::available_parallelism()
@@ -366,9 +371,9 @@ impl ModelState {
 
         let ctx_params = LlamaContextParams::default()
             .with_n_ctx(Some(
-                NonZeroU32::new(self.context_size).context("Invalid ctx size")?,
+                NonZeroU32::new(context_size).context("Invalid ctx size")?,
             ))
-            .with_n_batch(self.context_size)
+            .with_n_batch(context_size)
             .with_n_threads(threads)
             .with_n_threads_batch(threads);
 
@@ -376,14 +381,10 @@ impl ModelState {
             .new_context(&self.backend, ctx_params)
             .context("unable to create the llama_context")?;
 
-        let tokens_list = model
-            .str_to_token(&prompt, AddBos::Always)
-            .with_context(|| "failed to tokenize prompt")?;
-
         eprintln!("📝 Tokenized prompt: {} tokens", tokens_list.len());
+        eprintln!("Context allocated: {} of {} tokens", context_size, self.context_size);
 
-        // Use context size for batch capacity to handle long prompts
-        let batch_size = self.context_size as usize;
+        let batch_size = tokens_list.len();
         let mut batch = LlamaBatch::new(batch_size, 1);
 
         let last_index: i32 = (tokens_list.len() - 1) as i32;
@@ -534,6 +535,21 @@ impl ModelState {
     }
 }
 
+/// Allocate only the prompt and output budget, rounded for the inference backend.
+fn generation_context_size(prompt_tokens: usize, max_tokens: i32, limit: u32) -> Result<u32> {
+    if prompt_tokens == 0 || max_tokens <= 0 {
+        anyhow::bail!("Generation needs a non-empty prompt and a positive output token limit.");
+    }
+    let required = prompt_tokens.checked_add(max_tokens as usize)
+        .and_then(|size| size.checked_add(1))
+        .context("The prompt and requested output are too large.")?;
+    if required > limit as usize {
+        anyhow::bail!("The prompt and requested output exceed the local model context. Split the transcript into smaller chunks.");
+    }
+    let rounded = ((required as u64).max(512) + 255) / 256 * 256;
+    Ok(rounded.min(limit as u64) as u32)
+}
+
 // ============================================================================
 // Main Loop with Keep-Alive Protocol
 // ============================================================================
@@ -676,6 +692,22 @@ fn main() -> Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn short_requests_allocate_less_context_without_cutting_the_output_budget() {
+        assert_eq!(generation_context_size(1000, 128, 32768).unwrap(), 1280);
+        assert_eq!(generation_context_size(100, 16, 32768).unwrap(), 512);
+        assert_eq!(generation_context_size(1000, 100, 1101).unwrap(), 1101);
+    }
+
+    #[test]
+    fn invalid_requests_fail_before_allocating_an_inference_context() {
+        assert!(generation_context_size(1000, 128, 1024).is_err());
+        assert!(generation_context_size(0, 128, 1024).is_err());
+        assert!(generation_context_size(100, 0, 1024).is_err());
+        assert!(generation_context_size(100, -1, 1024).is_err());
+        assert!(generation_context_size(usize::MAX, 1, 1024).is_err());
+    }
 
     #[test]
     fn generate_request_defaults_penalties_when_omitted() {

@@ -13,7 +13,7 @@ export interface ModelConfig {
   model: string;
   whisperModel: string;
   /**
-   * @deprecated Use providerApiKeys from ConfigContext instead.
+   * Retained for compatibility with stored provider configurations.
    * This field may contain stale data when provider changes without saving.
    */
   apiKey?: string | null;

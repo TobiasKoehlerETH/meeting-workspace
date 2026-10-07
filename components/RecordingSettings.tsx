@@ -21,7 +21,7 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
   const [preferences, setPreferences] = useState<RecordingPreferences>({
     save_folder: '',
     auto_save: true,
-    file_format: 'mp4',
+    file_format: 'wav',
     preferred_mic_device: null,
     preferred_system_device: null
   });
@@ -67,14 +67,6 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
     loadNotificationPref();
   }, []);
 
-  const handleAutoSaveToggle = async (enabled: boolean) => {
-    const newPreferences = { ...preferences, auto_save: enabled };
-    setPreferences(newPreferences);
-    await savePreferences(newPreferences);
-
-    // Track auto-save setting change
-
-  };
 
   const handleDeviceChange = async (devices: SelectedDevices) => {
     const newPreferences = {
@@ -149,25 +141,13 @@ export function RecordingSettings({ onSave }: RecordingSettingsProps) {
       <div>
         <h3 className="text-lg font-semibold mb-4">Recordings</h3>
         <p className="text-sm text-gray-600 mb-6">
-          Choose how to save audio.
+          Choose where to save recordings.
         </p>
       </div>
 
-      {/* Auto Save Toggle */}
-      <div className="flex items-center justify-between p-4 border rounded-lg">
-        <div className="flex-1">
-          <div className="font-medium">Save audio</div>
-          <div className="text-sm text-gray-600">
-            Save an audio file when recording stops.
-          </div>
-        </div>
-        <Switch
-          aria-label="Save audio"
-          checked={preferences.auto_save}
-          onCheckedChange={handleAutoSaveToggle}
-          disabled={saving}
-        />
-      </div>
+      <p className="rounded-lg border p-4 text-sm text-gray-600">
+        Lossless WAV audio is always saved for local transcription and retries.
+      </p>
 
       {/* Folder Location - Only shown when auto_save is enabled */}
       {preferences.auto_save && (

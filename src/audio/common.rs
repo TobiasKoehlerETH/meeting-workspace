@@ -15,15 +15,9 @@ pub(crate) async fn acquire_engine_lifecycle_lock() -> OwnedMutexGuard<()> {
 }
 
 /// Unload the transcription engine after a batch job (import or retranscription).
-/// Skips unloading if a live recording is currently in progress, since recording
-/// uses the same global engine instances.
+/// Recording does not use speech models, so it does not need to retain them.
 pub(crate) async fn unload_engine_after_batch(use_parakeet: bool) {
     let _engine_lifecycle_guard = acquire_engine_lifecycle_lock().await;
-
-    if crate::audio::recording_commands::is_recording().await {
-        log::info!("Skipping model unload after batch: recording in progress");
-        return;
-    }
 
     if use_parakeet {
         use crate::parakeet_engine::commands::PARAKEET_ENGINE;
@@ -63,6 +57,7 @@ pub(crate) fn create_transcript_segments(transcripts: &[(String, f64, f64)]) -> 
                 audio_start_time: Some(start_seconds),
                 audio_end_time: Some(end_seconds),
                 duration: Some(duration),
+                speaker: None,
             }
         })
         .collect()
@@ -85,6 +80,7 @@ pub(crate) fn write_transcripts_json(folder: &Path, segments: &[TranscriptSegmen
                 "audio_start_time": s.audio_start_time,
                 "audio_end_time": s.audio_end_time,
                 "duration": s.duration,
+                "speaker": s.speaker,
                 "sequence_id": i
             })
         }).collect::<Vec<_>>()
@@ -143,6 +139,7 @@ pub(crate) fn split_segment_at_silence(
                 start_timestamp_ms: chunk_start_ms,
                 end_timestamp_ms: chunk_end_ms,
                 confidence: segment.confidence,
+                speaker: segment.speaker.clone(),
             });
             break;
         }
@@ -201,6 +198,7 @@ pub(crate) fn split_segment_at_silence(
             start_timestamp_ms: chunk_start_ms,
             end_timestamp_ms: chunk_end_ms,
             confidence: segment.confidence,
+            speaker: segment.speaker.clone(),
         });
 
         // Advance position to where the current chunk actually ends

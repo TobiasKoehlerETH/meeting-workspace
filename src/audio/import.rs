@@ -411,7 +411,7 @@ async fn run_import<R: Runtime>(
     });
 
     let audio_samples = tokio::task::spawn_blocking(move || {
-        decoded.to_whisper_format_with_progress(Some(resample_progress))
+        decoded.into_whisper_format_with_progress(Some(resample_progress))
     })
     .await
     .map_err(|e| anyhow!("Resample task join error: {}", e))?;
@@ -420,7 +420,7 @@ async fn run_import<R: Runtime>(
         audio_samples.len()
     );
 
-    emit_progress(&app, "vad", 25, "Detecting speech segments...");
+    emit_progress(&app, "vad", 25, "Detecting speakers and speech locally...");
 
     // Check for cancellation
     if IMPORT_CANCELLED.load(Ordering::SeqCst) {
@@ -431,8 +431,13 @@ async fn run_import<R: Runtime>(
     // Use VAD to find speech segments
     let app_for_vad = app.clone();
 
+    let speaker_settings = crate::speakers::get_speaker_settings(app.clone()).map_err(|e| anyhow!(e))?;
+    let speaker_directory = if speaker_settings.enabled { Some(crate::speakers::runtime_directory(&app)?) } else { None };
     let speech_segments = tokio::task::spawn_blocking(move || {
-        get_speech_chunks_with_progress(
+        let turns = if let Some(directory) = speaker_directory {
+            crate::speakers::detect_speakers(&audio_samples, &directory, &speaker_settings, || IMPORT_CANCELLED.load(Ordering::SeqCst))?
+        } else { Vec::new() };
+        let segments = get_speech_chunks_with_progress(
             &audio_samples,
             VAD_REDEMPTION_TIME_MS,
             |vad_progress, segments_found| {
@@ -448,7 +453,8 @@ async fn run_import<R: Runtime>(
                 );
                 !IMPORT_CANCELLED.load(Ordering::SeqCst)
             },
-        )
+        )?;
+        Ok::<_, anyhow::Error>(crate::speakers::label_segments(segments, &turns))
     })
     .await
     .map_err(|e| anyhow!("VAD task panicked: {}", e))?
@@ -526,7 +532,7 @@ async fn run_import<R: Runtime>(
     const MAX_SEGMENT_SAMPLES: usize = 25 * 16000; // 25 seconds at 16kHz
 
     let mut processable_segments: Vec<crate::audio::vad::SpeechSegment> = Vec::new();
-    for segment in &speech_segments {
+    for segment in speech_segments {
         if segment.samples.len() > MAX_SEGMENT_SAMPLES {
             debug!(
                 "Splitting large segment ({:.0}ms, {} samples) at silence boundaries",
@@ -534,11 +540,11 @@ async fn run_import<R: Runtime>(
                 segment.samples.len()
             );
 
-            let sub_segments = split_segment_at_silence(segment, MAX_SEGMENT_SAMPLES);
+            let sub_segments = split_segment_at_silence(&segment, MAX_SEGMENT_SAMPLES);
             debug!("Split into {} sub-segments", sub_segments.len());
             processable_segments.extend(sub_segments);
         } else {
-            processable_segments.push(segment.clone());
+            processable_segments.push(segment);
         }
     }
 
@@ -548,8 +554,9 @@ async fn run_import<R: Runtime>(
     // Process each speech segment
     let mut all_transcripts: Vec<(String, f64, f64)> = Vec::new();
     let mut total_confidence = 0.0f32;
+    let mut speaker_labels = Vec::new();
 
-    for (i, segment) in processable_segments.iter().enumerate() {
+    for (i, segment) in processable_segments.into_iter().enumerate() {
         if IMPORT_CANCELLED.load(Ordering::SeqCst) {
             let _ = std::fs::remove_dir_all(&meeting_folder);
             return Err(anyhow!("Import cancelled"));
@@ -583,14 +590,14 @@ async fn run_import<R: Runtime>(
         let (text, conf) = if use_parakeet {
             let engine = parakeet_engine.as_ref().unwrap();
             let text = engine
-                .transcribe_audio(segment.samples.clone())
+                .transcribe_audio(segment.samples)
                 .await
                 .map_err(|e| anyhow!("Parakeet transcription failed on segment {}: {}", i, e))?;
             (text, 0.9f32)
         } else {
             let engine = whisper_engine.as_ref().unwrap();
             let (text, conf, _) = engine
-                .transcribe_audio_with_confidence(segment.samples.clone(), language.clone())
+                .transcribe_audio_with_confidence(segment.samples, language.clone())
                 .await
                 .map_err(|e| anyhow!("Whisper transcription failed on segment {}: {}", i, e))?;
             (text, conf)
@@ -604,6 +611,7 @@ async fn run_import<R: Runtime>(
                 if trimmed.len() > 80 { let mut end = 80; while !trimmed.is_char_boundary(end) { end -= 1; } &trimmed[..end] } else { trimmed }
             );
             all_transcripts.push((text, segment.start_timestamp_ms, segment.end_timestamp_ms));
+            speaker_labels.push(segment.speaker);
             total_confidence += conf;
         } else {
             debug!("Segment {}/{}: {:.1}s — empty transcription", i + 1, processable_count, segment_duration_sec);
@@ -631,7 +639,8 @@ async fn run_import<R: Runtime>(
     emit_progress(&app, "saving", 85, "Creating meeting...");
 
     // Create transcript segments
-    let segments = create_transcript_segments(&all_transcripts);
+    let mut segments = create_transcript_segments(&all_transcripts);
+    for (segment, speaker) in segments.iter_mut().zip(speaker_labels) { segment.speaker = speaker; }
 
     // Save to database
     let app_state = app
@@ -720,8 +729,8 @@ async fn create_meeting_with_transcripts(
     // Insert transcripts
     for segment in segments {
         sqlx::query(
-            "INSERT INTO transcripts (id, meeting_id, transcript, timestamp, audio_start_time, audio_end_time, duration)
-             VALUES (?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO transcripts (id, meeting_id, transcript, timestamp, audio_start_time, audio_end_time, duration, speaker)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
         )
         .bind(&segment.id)
         .bind(&meeting_id)
@@ -730,6 +739,7 @@ async fn create_meeting_with_transcripts(
         .bind(segment.audio_start_time)
         .bind(segment.audio_end_time)
         .bind(segment.duration)
+        .bind(&segment.speaker)
         .execute(&mut *tx)
         .await
         .map_err(|e| anyhow!("Failed to insert transcript: {}", e))?;
@@ -1118,6 +1128,7 @@ mod tests {
             start_timestamp_ms: 0.0,
             end_timestamp_ms: 1000.0,
             confidence: 0.9,
+            speaker: None,
         };
         let result = split_segment_at_silence(&segment, 25 * 16000);
         assert_eq!(result.len(), 1);
@@ -1137,6 +1148,7 @@ mod tests {
             start_timestamp_ms: 0.0,
             end_timestamp_ms: 60_000.0,
             confidence: 0.9,
+            speaker: None,
         };
 
         let result = split_segment_at_silence(&segment, 25 * 16000);
@@ -1161,6 +1173,7 @@ mod tests {
             start_timestamp_ms: 0.0,
             end_timestamp_ms: 60_000.0,
             confidence: 0.9,
+            speaker: None,
         };
 
         let result = split_segment_at_silence(&segment, 25 * 16000);
@@ -1181,6 +1194,7 @@ mod tests {
                 timestamp: "2024-01-01T00:00:00Z".to_string(),
                 audio_start_time: Some(0.0),
                 audio_end_time: Some(1.5),
+                speaker: None,
                 duration: Some(1.5),
             },
             TranscriptSegment {
@@ -1189,6 +1203,7 @@ mod tests {
                 timestamp: "2024-01-01T00:00:01Z".to_string(),
                 audio_start_time: Some(2.0),
                 audio_end_time: Some(3.5),
+                speaker: None,
                 duration: Some(1.5),
             },
         ];
@@ -1266,7 +1281,8 @@ mod tests {
 
         // Step 2: Resample to 16kHz mono
         println!("Resampling to 16kHz mono...");
-        let samples = decoded.to_whisper_format();
+        let duration_seconds = decoded.duration_seconds;
+        let samples = decoded.into_whisper_format();
         println!("Resampled: {} samples ({:.2}s at 16kHz)", samples.len(), samples.len() as f64 / 16000.0);
 
         // Step 3: Run VAD with both redemption times and compare
@@ -1299,8 +1315,8 @@ mod tests {
                     "Stats: avg={:.0}ms, min={:.0}ms, max={:.0}ms, total_speech={:.1}s/{:.1}s ({:.0}%)",
                     avg, min, max,
                     total_speech / 1000.0,
-                    decoded.duration_seconds,
-                    (total_speech / 1000.0 / decoded.duration_seconds) * 100.0
+                    duration_seconds,
+                    (total_speech / 1000.0 / duration_seconds) * 100.0
                 );
 
                 // Segments over 25s that would be split

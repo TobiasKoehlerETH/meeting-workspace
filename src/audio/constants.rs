@@ -5,3 +5,6 @@
 pub const AUDIO_EXTENSIONS: &[&str] = &[
     "mp4", "m4a", "wav", "mp3", "flac", "ogg", "aac", "mkv", "webm", "wma"
 ];
+
+/// Optional microphone enhancement; disabled to keep capture lightweight.
+pub const RNNOISE_APPLY_ENABLED: bool = false;

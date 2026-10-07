@@ -2,97 +2,67 @@
   "actions": [
     {
       "file": "app/meeting-details/page.tsx",
-      "line": 343,
+      "line": 326,
       "event": "onClick",
       "handler": "{() => router.push('/')}"
     },
     {
-      "file": "app/settings/page.tsx",
-      "line": 72,
-      "event": "onClick",
-      "handler": "{() => router.back()}"
-    },
-    {
-      "file": "app/settings/page.tsx",
-      "line": 87,
-      "event": "onValueChange",
-      "handler": "{setActiveTab}"
-    },
-    {
       "file": "app/_components/SettingsModal.tsx",
-      "line": 70,
+      "line": 66,
       "event": "onClick",
       "handler": "{() => onClose(\"modelSettings\")\n              }"
     },
     {
       "file": "app/_components/SettingsModal.tsx",
-      "line": 141,
-      "event": "onClick",
-      "handler": "{() => setModelConfig((prev: ModelConfig) => ({ ...prev, model: model.name }))}"
-    },
-    {
-      "file": "app/_components/SettingsModal.tsx",
-      "line": 158,
+      "line": 87,
       "event": "onClick",
       "handler": "{() => onClose('modelSettings')}"
     },
     {
       "file": "app/_components/SettingsModal.tsx",
-      "line": 177,
+      "line": 113,
       "event": "onClick",
-      "handler": "{() => onClose('deviceSettings')}"
+      "handler": "{() => {\n                toast.success('Audio devices selected');\n                onClose('deviceSettings');\n              }}"
     },
     {
       "file": "app/_components/SettingsModal.tsx",
-      "line": 194,
-      "event": "onClick",
-      "handler": "{() => {\n                const micDevice = selectedDevices.micDevice || 'Default';\n                const systemDevice = selectedDevices.systemDevice || 'Default';\n                t"
-    },
-    {
-      "file": "app/_components/SettingsModal.tsx",
-      "line": 216,
+      "line": 133,
       "event": "onClick",
       "handler": "{() => onClose('languageSettings')}"
     },
     {
       "file": "app/_components/SettingsModal.tsx",
-      "line": 234,
+      "line": 151,
       "event": "onClick",
       "handler": "{() => onClose('languageSettings')}"
     },
     {
       "file": "app/_components/SettingsModal.tsx",
-      "line": 254,
+      "line": 171,
       "event": "onClick",
       "handler": "{() => onClose('modelSelector')}"
     },
     {
       "file": "app/_components/SettingsModal.tsx",
-      "line": 292,
+      "line": 209,
       "event": "onClick",
       "handler": "{() => onClose('modelSelector')}"
     },
     {
       "file": "app/_components/SettingsModal.tsx",
-      "line": 310,
+      "line": 227,
       "event": "onClick",
       "handler": "{() => onClose('errorAlert')}"
     },
     {
       "file": "app/_components/SettingsModal.tsx",
-      "line": 328,
+      "line": 245,
       "event": "onClick",
       "handler": "{() => onClose('chunkDropWarning')}"
     },
     {
       "file": "app/_components/TranscriptPanel.tsx",
-      "line": 64,
-      "event": "onClick",
-      "handler": "{copyTranscript}"
-    },
-    {
-      "file": "app/_components/TranscriptPanel.tsx",
-      "line": 77,
+      "line": 49,
       "event": "onClick",
       "handler": "{() => showModal('languageSettings')}"
     },
@@ -131,12 +101,6 @@
       "line": 57,
       "event": "onCheckedChange",
       "handler": "{(checked) => toggleBetaFeature(featureKey, checked)}"
-    },
-    {
-      "file": "components/BluetoothPlaybackWarning.tsx",
-      "line": 87,
-      "event": "onClick",
-      "handler": "{() => setIsDismissed(true)}"
     },
     {
       "file": "components/BuiltInModelManager.tsx",
@@ -181,42 +145,6 @@
       "handler": "{(e) => {\r\n                        e.stopPropagation();\r\n                        deleteModel(model.name);\r\n                      }}"
     },
     {
-      "file": "components/ChunkProgressDisplay.tsx",
-      "line": 108,
-      "event": "onClick",
-      "handler": "{onPause}"
-    },
-    {
-      "file": "components/ChunkProgressDisplay.tsx",
-      "line": 116,
-      "event": "onClick",
-      "handler": "{onResume}"
-    },
-    {
-      "file": "components/ChunkProgressDisplay.tsx",
-      "line": 124,
-      "event": "onClick",
-      "handler": "{onCancel}"
-    },
-    {
-      "file": "components/ComplianceNotification.tsx",
-      "line": 84,
-      "event": "onClick",
-      "handler": "{handleClose}"
-    },
-    {
-      "file": "components/ComplianceNotification.tsx",
-      "line": 108,
-      "event": "onClick",
-      "handler": "{handleClose}"
-    },
-    {
-      "file": "components/ComplianceNotification.tsx",
-      "line": 115,
-      "event": "onClick",
-      "handler": "{handleAcknowledge}"
-    },
-    {
       "file": "components/ConfirmationModel/confirmation-modal.tsx",
       "line": 22,
       "event": "onClick",
@@ -229,62 +157,20 @@
       "handler": "{onConfirm}"
     },
     {
-      "file": "components/ConsoleToggle.tsx",
-      "line": 67,
-      "event": "onCheckedChange",
-      "handler": "{(checked) => {\r\n            if (checked) {\r\n              handleShowConsole();\r\n            } else {\r\n              handleHideConsole();\r\n            }\r\n          }}"
-    },
-    {
-      "file": "components/ConsoleToggle.tsx",
-      "line": 81,
-      "event": "onClick",
-      "handler": "{handleToggleConsole}"
-    },
-    {
-      "file": "components/DatabaseImport/HomebrewDatabaseDetector.tsx",
-      "line": 121,
-      "event": "onClick",
-      "handler": "{handleYes}"
-    },
-    {
-      "file": "components/DatabaseImport/HomebrewDatabaseDetector.tsx",
-      "line": 139,
-      "event": "onClick",
-      "handler": "{handleNo}"
-    },
-    {
-      "file": "components/DatabaseImport/LegacyDatabaseImport.tsx",
-      "line": 142,
-      "event": "onClick",
-      "handler": "{handleBrowse}"
-    },
-    {
-      "file": "components/DatabaseImport/LegacyDatabaseImport.tsx",
-      "line": 188,
-      "event": "onClick",
-      "handler": "{handleImport}"
-    },
-    {
-      "file": "components/DatabaseImport/LegacyDatabaseImport.tsx",
-      "line": 220,
-      "event": "onClick",
-      "handler": "{handleStartFresh}"
-    },
-    {
       "file": "components/DeviceSelection.tsx",
-      "line": 206,
+      "line": 208,
       "event": "onClick",
       "handler": "{handleRefresh}"
     },
     {
       "file": "components/DeviceSelection.tsx",
-      "line": 232,
+      "line": 234,
       "event": "onValueChange",
       "handler": "{handleMicDeviceChange}"
     },
     {
       "file": "components/DeviceSelection.tsx",
-      "line": 301,
+      "line": 303,
       "event": "onValueChange",
       "handler": "{handleSystemDeviceChange}"
     },
@@ -391,46 +277,22 @@
       "handler": "{() => onChange(opt.code)}"
     },
     {
-      "file": "components/MeetingDetails/RetranscribeDialog.tsx",
-      "line": 301,
-      "event": "onValueChange",
-      "handler": "{setSelectedLang}"
+      "file": "components/LaunchSettings.tsx",
+      "line": 52,
+      "event": "onCheckedChange",
+      "handler": "{savePreference}"
     },
     {
-      "file": "components/MeetingDetails/RetranscribeDialog.tsx",
-      "line": 336,
-      "event": "onValueChange",
-      "handler": "{setSelectedModelKey}"
-    },
-    {
-      "file": "components/MeetingDetails/RetranscribeDialog.tsx",
-      "line": 384,
+      "file": "components/MeetingDetails/RecordingPlayer.tsx",
+      "line": 22,
       "event": "onClick",
-      "handler": "{() => onOpenChange(false)}"
+      "handler": "{() => void load()}"
     },
     {
-      "file": "components/MeetingDetails/RetranscribeDialog.tsx",
-      "line": 388,
+      "file": "components/MeetingDetails/SpeakerNames.tsx",
+      "line": 51,
       "event": "onClick",
-      "handler": "{handleStartRetranscription}"
-    },
-    {
-      "file": "components/MeetingDetails/RetranscribeDialog.tsx",
-      "line": 398,
-      "event": "onClick",
-      "handler": "{handleCancel}"
-    },
-    {
-      "file": "components/MeetingDetails/RetranscribeDialog.tsx",
-      "line": 405,
-      "event": "onClick",
-      "handler": "{() => onOpenChange(false)}"
-    },
-    {
-      "file": "components/MeetingDetails/RetranscribeDialog.tsx",
-      "line": 409,
-      "event": "onClick",
-      "handler": "{() => {\r\n                  setError(null);\r\n                  setProgress(null);\r\n                }}"
+      "handler": "{() => void rename()}"
     },
     {
       "file": "components/MeetingDetails/SummaryGeneratorButtonGroup.tsx",
@@ -464,117 +326,27 @@
     },
     {
       "file": "components/MeetingDetails/TranscriptButtonGroup.tsx",
-      "line": 45,
+      "line": 44,
       "event": "onClick",
-      "handler": "{() => {\r\n            \r\n            onCopyTranscript();\r\n          }}"
+      "handler": "{() => void transcribe()}"
     },
     {
       "file": "components/MeetingDetails/TranscriptButtonGroup.tsx",
-      "line": 60,
+      "line": 48,
       "event": "onClick",
-      "handler": "{() => {\r\n            \r\n            onOpenMeetingFolder();\r\n          }}"
+      "handler": "{onCopyTranscript}"
     },
     {
       "file": "components/MeetingDetails/TranscriptButtonGroup.tsx",
-      "line": 75,
+      "line": 50,
       "event": "onClick",
-      "handler": "{() => {\r\n              \r\n              setShowRetranscribeDialog(true);\r\n            }}"
+      "handler": "{() => void onOpenMeetingFolder()}"
     },
     {
       "file": "components/ModelSettingsModal.tsx",
-      "line": 800,
-      "event": "onValueChange",
-      "handler": "{(value) => {\n                const provider = value as ModelConfig['provider'];\n\n                // Clear error state when switching providers\n                setError('');\n\n     "
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 978,
+      "line": 42,
       "event": "onClick",
-      "handler": "{() => setIsCustomOpenAIAdvancedOpen(!isCustomOpenAIAdvancedOpen)}"
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 1038,
-      "event": "onClick",
-      "handler": "{testCustomOpenAIConnection}"
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 1071,
-      "event": "onClick",
-      "handler": "{handleInputClick}"
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 1081,
-      "event": "onClick",
-      "handler": "{() => setIsApiKeyLocked(!isApiKeyLocked)}"
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 1092,
-      "event": "onClick",
-      "handler": "{() => setShowApiKey(!showApiKey)}"
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 1105,
-      "event": "onClick",
-      "handler": "{() => setIsEndpointSectionCollapsed(!isEndpointSectionCollapsed)}"
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 1149,
-      "event": "onClick",
-      "handler": "{() => fetchOllamaModels()}"
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 1220,
-      "event": "onClick",
-      "handler": "{() => invoke('open_external_url', { url: 'https://ollama.com/download' })}"
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 1245,
-      "event": "onClick",
-      "handler": "{downloadRecommendedModel}"
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 1308,
-      "event": "onClick",
-      "handler": "{() => {\n                            if (!modelIsDownloading) {\n                              setModelConfig((prev: ModelConfig) => ({ ...prev, model: model.name }))\n              "
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 1384,
-      "event": "onClick",
-      "handler": "{handleSave}"
-    },
-    {
-      "file": "components/molecules/form-components/form-input-item.tsx",
-      "line": 98,
-      "event": "onClick",
-      "handler": "{togglePasswordVisibility}"
-    },
-    {
-      "file": "components/molecules/form-components/form-input-item.tsx",
-      "line": 103,
-      "event": "onClick",
-      "handler": "{togglePasswordVisibility}"
-    },
-    {
-      "file": "components/molecules/form-components/form-input-switch.tsx",
-      "line": 52,
-      "event": "onCheckedChange",
-      "handler": "{field.onChange}"
-    },
-    {
-      "file": "components/molecules/form-components/form-select-item.tsx",
-      "line": 58,
-      "event": "onValueChange",
-      "handler": "{field.onChange}"
+      "handler": "{() => onSave({ ...modelConfig, provider: 'builtin-ai', apiKey: null })}"
     },
     {
       "file": "components/onboarding/OnboardingContainer.tsx",
@@ -698,147 +470,153 @@
     },
     {
       "file": "components/PreferenceSettings.tsx",
-      "line": 148,
+      "line": 126,
       "event": "onCheckedChange",
       "handler": "{setNotificationsEnabled}"
     },
     {
       "file": "components/PreferenceSettings.tsx",
-      "line": 197,
+      "line": 145,
       "event": "onClick",
       "handler": "{() => handleOpenFolder('recordings')}"
     },
     {
       "file": "components/RecordingControls.tsx",
-      "line": 358,
+      "line": 356,
       "event": "onClick",
       "handler": "{handleStartRecording}"
     },
     {
       "file": "components/RecordingControls.tsx",
-      "line": 399,
+      "line": 397,
       "event": "onClick",
       "handler": "{() => {\n\n                            handleStartRecording();\n                          }}"
     },
     {
       "file": "components/RecordingControls.tsx",
-      "line": 426,
+      "line": 424,
       "event": "onClick",
       "handler": "{() => {\n                              if (isPaused) {\n\n                                handleResumeRecording();\n                              } else {\n\n                           "
     },
     {
       "file": "components/RecordingControls.tsx",
-      "line": 459,
+      "line": 457,
       "event": "onClick",
       "handler": "{() => {\n\n                              handleStopRecording();\n                            }}"
     },
     {
       "file": "components/RecordingControls.tsx",
-      "line": 497,
+      "line": 495,
       "event": "onClick",
       "handler": "{onOpenDeviceSettings}"
     },
     {
       "file": "components/RecordingControls.tsx",
-      "line": 521,
+      "line": 512,
       "event": "onClick",
       "handler": "{() => setDeviceError(null)}"
     },
     {
       "file": "components/RecordingSettings.tsx",
-      "line": 167,
-      "event": "onCheckedChange",
-      "handler": "{handleAutoSaveToggle}"
-    },
-    {
-      "file": "components/RecordingSettings.tsx",
-      "line": 181,
+      "line": 161,
       "event": "onClick",
       "handler": "{handleOpenFolder}"
     },
     {
       "file": "components/RecordingSettings.tsx",
-      "line": 220,
+      "line": 200,
       "event": "onCheckedChange",
       "handler": "{handleNotificationToggle}"
     },
     {
-      "file": "components/SettingTabs.tsx",
-      "line": 34,
+      "file": "components/SettingsPanel.tsx",
+      "line": 73,
+      "event": "onClick",
+      "handler": "{() => onClose ? onClose() : router.back()}"
+    },
+    {
+      "file": "components/SettingsPanel.tsx",
+      "line": 88,
       "event": "onValueChange",
-      "handler": "{handleTabChange}"
+      "handler": "{setActiveTab}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 456,
+      "line": 295,
       "event": "onClick",
       "handler": "{() => {\n            setCurrentMeeting({ id: item.id, title: item.title });\n            router.push(isMeetingItem ? '/meeting-details?id=' + encodeURIComponent(item.id) : '/notes/'"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 464,
+      "line": 303,
       "event": "onClick",
       "handler": "{() => handleEditStart(item.id, item.title)}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 465,
+      "line": 304,
       "event": "onClick",
       "handler": "{() => setDeleteModalState({ isOpen: true, itemId: item.id })}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 477,
+      "line": 316,
       "event": "onClick",
       "handler": "{toggleCollapse}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 484,
+      "line": 323,
       "event": "onClick",
       "handler": "{() => router.push('/')}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 487,
+      "line": 326,
       "event": "onClick",
       "handler": "{handleRecordingToggle}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 490,
+      "line": 329,
       "event": "onClick",
       "handler": "{() => openImportDialog()}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 496,
+      "line": 335,
       "event": "onClick",
       "handler": "{openMeetingNotes}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 506,
+      "line": 345,
       "event": "onClick",
       "handler": "{() => handleSearchChange('')}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 519,
+      "line": 358,
       "event": "onClick",
-      "handler": "{() => router.push('/settings')}"
+      "handler": "{() => setSettingsOpen(true)}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 568,
+      "line": 414,
       "event": "onClick",
       "handler": "{handleEditCancel}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 574,
+      "line": 420,
       "event": "onClick",
       "handler": "{handleEditConfirm}"
+    },
+    {
+      "file": "components/SpeakerSettings.tsx",
+      "line": 36,
+      "event": "onCheckedChange",
+      "handler": "{enabled => void save({ ...settings, enabled })}"
     },
     {
       "file": "components/SummaryLanguageSettings.tsx",
@@ -854,7 +632,7 @@
     },
     {
       "file": "components/SummaryModelSettings.tsx",
-      "line": 133,
+      "line": 135,
       "event": "onCheckedChange",
       "handler": "{toggleIsAutoSummary}"
     },
@@ -884,27 +662,9 @@
     },
     {
       "file": "components/TranscriptSettings.tsx",
-      "line": 87,
+      "line": 33,
       "event": "onValueChange",
       "handler": "{value => setProvider(value as TranscriptModelProps['provider'])}"
-    },
-    {
-      "file": "components/TranscriptSettings.tsx",
-      "line": 102,
-      "event": "onValueChange",
-      "handler": "{setModel}"
-    },
-    {
-      "file": "components/TranscriptSettings.tsx",
-      "line": 111,
-      "event": "onClick",
-      "handler": "{() => setShowApiKey(previous => !previous)}"
-    },
-    {
-      "file": "components/TranscriptSettings.tsx",
-      "line": 114,
-      "event": "onClick",
-      "handler": "{saveApiSettings}"
     },
     {
       "file": "components/ui/input-group.tsx",
@@ -956,7 +716,7 @@
     },
     {
       "file": "lib/recordingNotification.tsx",
-      "line": 38,
+      "line": 40,
       "event": "onClick",
       "handler": "{async () => {\r\n                if (dontShowAgain) {\r\n                  const { Store } = await import('@tauri-apps/plugin-store');\r\n                  const store = await Store.loa"
     }
@@ -964,7 +724,7 @@
   "invocations": [
     {
       "file": "app/layout.tsx",
-      "line": 74,
+      "line": 77,
       "command": "get_onboarding_status",
       "registered": true
     },
@@ -976,32 +736,20 @@
     },
     {
       "file": "app/meeting-details/page.tsx",
-      "line": 53,
-      "command": "get_ollama_models",
-      "registered": true
-    },
-    {
-      "file": "app/meeting-details/page.tsx",
-      "line": 83,
+      "line": 80,
       "command": "api_get_model_config",
       "registered": true
     },
     {
       "file": "app/meeting-details/page.tsx",
-      "line": 99,
+      "line": 90,
       "command": "api_save_model_config",
       "registered": true
     },
     {
       "file": "app/meeting-details/page.tsx",
-      "line": 203,
+      "line": 186,
       "command": "api_get_summary",
-      "registered": true
-    },
-    {
-      "file": "app/settings/page.tsx",
-      "line": 38,
-      "command": "api_get_transcript_config",
       "registered": true
     },
     {
@@ -1020,12 +768,6 @@
       "file": "components/AudioBackendSelector.tsx",
       "line": 61,
       "command": "set_audio_backend",
-      "registered": true
-    },
-    {
-      "file": "components/BluetoothPlaybackWarning.tsx",
-      "line": 35,
-      "command": "get_active_audio_output",
       "registered": true
     },
     {
@@ -1053,60 +795,6 @@
       "registered": true
     },
     {
-      "file": "components/ConsoleToggle.tsx",
-      "line": 14,
-      "command": "toggle_console",
-      "registered": true
-    },
-    {
-      "file": "components/ConsoleToggle.tsx",
-      "line": 27,
-      "command": "show_console",
-      "registered": true
-    },
-    {
-      "file": "components/ConsoleToggle.tsx",
-      "line": 40,
-      "command": "hide_console",
-      "registered": true
-    },
-    {
-      "file": "components/DatabaseImport/HomebrewDatabaseDetector.tsx",
-      "line": 37,
-      "command": "check_homebrew_database",
-      "registered": true
-    },
-    {
-      "file": "components/DatabaseImport/HomebrewDatabaseDetector.tsx",
-      "line": 60,
-      "command": "import_and_initialize_database",
-      "registered": true
-    },
-    {
-      "file": "components/DatabaseImport/LegacyDatabaseImport.tsx",
-      "line": 27,
-      "command": "select_legacy_database_path",
-      "registered": true
-    },
-    {
-      "file": "components/DatabaseImport/LegacyDatabaseImport.tsx",
-      "line": 37,
-      "command": "detect_legacy_database",
-      "registered": true
-    },
-    {
-      "file": "components/DatabaseImport/LegacyDatabaseImport.tsx",
-      "line": 64,
-      "command": "import_and_initialize_database",
-      "registered": true
-    },
-    {
-      "file": "components/DatabaseImport/LegacyDatabaseImport.tsx",
-      "line": 88,
-      "command": "initialize_fresh_database",
-      "registered": true
-    },
-    {
       "file": "components/DeviceSelection.tsx",
       "line": 56,
       "command": "get_audio_devices",
@@ -1125,15 +813,21 @@
       "registered": true
     },
     {
-      "file": "components/MeetingDetails/RetranscribeDialog.tsx",
-      "line": 208,
-      "command": "start_retranscription_command",
+      "file": "components/MeetingDetails/RecordingPlayer.tsx",
+      "line": 14,
+      "command": "get_meeting_audio_path",
       "registered": true
     },
     {
-      "file": "components/MeetingDetails/RetranscribeDialog.tsx",
-      "line": 227,
-      "command": "cancel_retranscription_command",
+      "file": "components/MeetingDetails/SpeakerNames.tsx",
+      "line": 19,
+      "command": "list_meeting_speakers",
+      "registered": true
+    },
+    {
+      "file": "components/MeetingDetails/SpeakerNames.tsx",
+      "line": 28,
+      "command": "rename_meeting_speaker",
       "registered": true
     },
     {
@@ -1162,110 +856,14 @@
     },
     {
       "file": "components/ModelSettingsModal.tsx",
-      "line": 207,
-      "command": "api_get_api_key",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 265,
+      "line": 34,
       "command": "api_get_model_config",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 272,
-      "command": "api_get_api_key",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 292,
-      "command": "api_get_custom_openai_config",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 418,
-      "command": "get_ollama_models",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 478,
-      "command": "get_openrouter_models",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 494,
-      "command": "builtin_ai_list_models",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 518,
-      "command": "get_openai_models",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 536,
-      "command": "get_anthropic_models",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 554,
-      "command": "get_groq_models",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 605,
-      "command": "api_save_custom_openai_config",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 664,
-      "command": "api_test_custom_openai_connection",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 702,
-      "command": "pull_ollama_model",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 723,
-      "command": "open_external_url",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 737,
-      "command": "delete_ollama_model",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 842,
-      "command": "api_get_custom_openai_config",
-      "registered": true
-    },
-    {
-      "file": "components/ModelSettingsModal.tsx",
-      "line": 1220,
-      "command": "open_external_url",
       "registered": true
     },
     {
       "file": "components/onboarding/steps/DownloadProgressStep.tsx",
       "line": 84,
-      "command": "parakeet_retry_download",
+      "command": "whisper_download_model",
       "registered": true
     },
     {
@@ -1277,13 +875,13 @@
     {
       "file": "components/onboarding/steps/DownloadProgressStep.tsx",
       "line": 334,
-      "command": "parakeet_init",
+      "command": "whisper_init",
       "registered": true
     },
     {
       "file": "components/onboarding/steps/DownloadProgressStep.tsx",
       "line": 335,
-      "command": "parakeet_has_available_models",
+      "command": "whisper_has_available_models",
       "registered": true
     },
     {
@@ -1330,43 +928,43 @@
     },
     {
       "file": "components/PreferenceSettings.tsx",
-      "line": 109,
+      "line": 87,
       "command": "open_database_folder",
       "registered": true
     },
     {
       "file": "components/PreferenceSettings.tsx",
-      "line": 112,
+      "line": 90,
       "command": "open_models_folder",
       "registered": true
     },
     {
       "file": "components/PreferenceSettings.tsx",
-      "line": 115,
+      "line": 93,
       "command": "open_recordings_folder",
       "registered": true
     },
     {
       "file": "components/RecordingControls.tsx",
-      "line": 78,
+      "line": 77,
       "command": "is_recording",
       "registered": true
     },
     {
       "file": "components/RecordingControls.tsx",
-      "line": 151,
+      "line": 149,
       "command": "stop_recording",
       "registered": true
     },
     {
       "file": "components/RecordingControls.tsx",
-      "line": 213,
+      "line": 211,
       "command": "pause_recording",
       "registered": true
     },
     {
       "file": "components/RecordingControls.tsx",
-      "line": 231,
+      "line": 229,
       "command": "resume_recording",
       "registered": true
     },
@@ -1384,55 +982,31 @@
     },
     {
       "file": "components/RecordingSettings.tsx",
-      "line": 95,
+      "line": 87,
       "command": "open_recordings_folder",
       "registered": true
     },
     {
       "file": "components/RecordingSettings.tsx",
-      "line": 119,
+      "line": 111,
       "command": "set_recording_preferences",
       "registered": true
     },
     {
-      "file": "components/Sidebar/index.tsx",
-      "line": 113,
-      "command": "api_get_model_config",
-      "registered": true
-    },
-    {
-      "file": "components/Sidebar/index.tsx",
-      "line": 118,
-      "command": "api_get_api_key",
-      "registered": true
-    },
-    {
-      "file": "components/Sidebar/index.tsx",
-      "line": 147,
+      "file": "components/SettingsPanel.tsx",
+      "line": 39,
       "command": "api_get_transcript_config",
       "registered": true
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 183,
-      "command": "api_save_model_config",
-      "registered": true
-    },
-    {
-      "file": "components/Sidebar/index.tsx",
-      "line": 217,
-      "command": "api_save_transcript_config",
-      "registered": true
-    },
-    {
-      "file": "components/Sidebar/index.tsx",
-      "line": 324,
+      "line": 163,
       "command": "api_delete_meeting",
       "registered": true
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 382,
+      "line": 221,
       "command": "api_save_meeting_title",
       "registered": true
     },
@@ -1455,45 +1029,39 @@
       "registered": true
     },
     {
+      "file": "components/SpeakerSettings.tsx",
+      "line": 18,
+      "command": "get_speaker_settings",
+      "registered": true
+    },
+    {
+      "file": "components/SpeakerSettings.tsx",
+      "line": 27,
+      "command": "set_speaker_settings",
+      "registered": true
+    },
+    {
       "file": "components/SummaryModelSettings.tsx",
-      "line": 29,
+      "line": 31,
       "command": "api_get_model_config",
       "registered": true
     },
     {
       "file": "components/SummaryModelSettings.tsx",
-      "line": 34,
+      "line": 36,
       "command": "api_get_api_key",
       "registered": true
     },
     {
       "file": "components/SummaryModelSettings.tsx",
-      "line": 45,
+      "line": 47,
       "command": "api_get_custom_openai_config",
       "registered": true
     },
     {
       "file": "components/SummaryModelSettings.tsx",
-      "line": 104,
+      "line": 106,
       "command": "api_save_model_config",
-      "registered": true
-    },
-    {
-      "file": "components/TranscriptSettings.tsx",
-      "line": 51,
-      "command": "api_get_transcript_api_key",
-      "registered": true
-    },
-    {
-      "file": "components/TranscriptSettings.tsx",
-      "line": 55,
-      "command": "get_openrouter_transcription_models",
-      "registered": true
-    },
-    {
-      "file": "components/TranscriptSettings.tsx",
-      "line": 71,
-      "command": "api_save_transcript_config",
       "registered": true
     },
     {
@@ -1504,55 +1072,43 @@
     },
     {
       "file": "contexts/ConfigContext.tsx",
-      "line": 182,
-      "command": "get_ollama_models",
-      "registered": true
-    },
-    {
-      "file": "contexts/ConfigContext.tsx",
-      "line": 218,
+      "line": 166,
       "command": "set_language_preference",
       "registered": true
     },
     {
       "file": "contexts/ConfigContext.tsx",
-      "line": 302,
-      "command": "api_get_api_key",
-      "registered": true
-    },
-    {
-      "file": "contexts/ConfigContext.tsx",
-      "line": 427,
+      "line": 329,
       "command": "get_notification_settings",
       "registered": true
     },
     {
       "file": "contexts/ConfigContext.tsx",
-      "line": 437,
+      "line": 339,
       "command": "get_database_directory",
       "registered": true
     },
     {
       "file": "contexts/ConfigContext.tsx",
-      "line": 438,
+      "line": 340,
       "command": "whisper_get_models_directory",
       "registered": true
     },
     {
       "file": "contexts/ConfigContext.tsx",
-      "line": 439,
+      "line": 341,
       "command": "get_default_recordings_folder_path",
       "registered": true
     },
     {
       "file": "contexts/ConfigContext.tsx",
-      "line": 461,
+      "line": 363,
       "command": "set_notification_settings",
       "registered": true
     },
     {
       "file": "contexts/ConfigContext.tsx",
-      "line": 476,
+      "line": 378,
       "command": "set_language_preference",
       "registered": true
     },
@@ -1625,72 +1181,72 @@
     {
       "file": "contexts/OnboardingContext.tsx",
       "line": 384,
-      "command": "parakeet_init",
+      "command": "whisper_init",
       "registered": true
     },
     {
       "file": "contexts/OnboardingContext.tsx",
       "line": 385,
-      "command": "parakeet_has_available_models",
+      "command": "whisper_get_available_models",
       "registered": true
     },
     {
       "file": "contexts/OnboardingContext.tsx",
-      "line": 394,
+      "line": 395,
       "command": "builtin_ai_get_recommended_model",
       "registered": true
     },
     {
       "file": "contexts/OnboardingContext.tsx",
-      "line": 398,
+      "line": 399,
       "command": "builtin_ai_is_model_ready",
       "registered": true
     },
     {
       "file": "contexts/OnboardingContext.tsx",
-      "line": 446,
+      "line": 447,
       "command": "save_onboarding_status_cmd",
       "registered": true
     },
     {
       "file": "contexts/OnboardingContext.tsx",
-      "line": 477,
+      "line": 478,
       "command": "builtin_ai_get_recommended_model",
       "registered": true
     },
     {
       "file": "contexts/OnboardingContext.tsx",
-      "line": 481,
+      "line": 482,
       "command": "builtin_ai_is_model_ready",
       "registered": true
     },
     {
       "file": "contexts/OnboardingContext.tsx",
-      "line": 491,
+      "line": 492,
       "command": "complete_onboarding",
       "registered": true
     },
     {
       "file": "contexts/OnboardingContext.tsx",
-      "line": 534,
-      "command": "parakeet_download_model",
+      "line": 535,
+      "command": "whisper_download_model",
       "registered": true
     },
     {
       "file": "contexts/OnboardingContext.tsx",
-      "line": 552,
-      "command": "parakeet_get_available_models",
+      "line": 553,
+      "command": "whisper_get_available_models",
       "registered": true
     },
     {
       "file": "contexts/OnboardingContext.tsx",
-      "line": 570,
-      "command": "parakeet_retry_download",
+      "line": 571,
+      "command": "whisper_download_model",
       "registered": true
     },
     {
       "file": "contexts/TranscriptContext.tsx",
-      "line": 129,
+      "line": 72,
       "command": "get_meeting_folder_path",
       "registered": true
     },
@@ -1725,86 +1281,62 @@
       "registered": true
     },
     {
-      "file": "hooks/meeting-details/useModelConfiguration.ts",
-      "line": 26,
-      "command": "api_get_model_config",
-      "registered": true
-    },
-    {
-      "file": "hooks/meeting-details/useModelConfiguration.ts",
-      "line": 38,
-      "command": "api_get_api_key",
-      "registered": true
-    },
-    {
-      "file": "hooks/meeting-details/useModelConfiguration.ts",
-      "line": 50,
-      "command": "api_get_custom_openai_config",
-      "registered": true
-    },
-    {
-      "file": "hooks/meeting-details/useModelConfiguration.ts",
-      "line": 128,
-      "command": "api_save_model_config",
-      "registered": true
-    },
-    {
       "file": "hooks/meeting-details/useSummaryGeneration.ts",
-      "line": 144,
+      "line": 145,
       "command": "api_process_transcript",
       "registered": true
     },
     {
       "file": "hooks/meeting-details/useSummaryGeneration.ts",
-      "line": 169,
+      "line": 171,
       "command": "api_get_summary",
       "registered": true
     },
     {
       "file": "hooks/meeting-details/useSummaryGeneration.ts",
-      "line": 197,
+      "line": 199,
       "command": "api_get_summary",
       "registered": true
     },
     {
       "file": "hooks/meeting-details/useSummaryGeneration.ts",
-      "line": 369,
+      "line": 371,
       "command": "api_get_meeting_transcripts",
       "registered": true
     },
     {
       "file": "hooks/meeting-details/useSummaryGeneration.ts",
-      "line": 383,
+      "line": 385,
       "command": "api_get_meeting_transcripts",
       "registered": true
     },
     {
       "file": "hooks/meeting-details/useSummaryGeneration.ts",
-      "line": 449,
+      "line": 451,
       "command": "get_ollama_models",
       "registered": true
     },
     {
       "file": "hooks/meeting-details/useSummaryGeneration.ts",
-      "line": 471,
+      "line": 473,
       "command": "open_external_url",
       "registered": true
     },
     {
       "file": "hooks/meeting-details/useSummaryGeneration.ts",
-      "line": 503,
+      "line": 505,
       "command": "builtin_ai_is_model_ready",
       "registered": true
     },
     {
       "file": "hooks/meeting-details/useSummaryGeneration.ts",
-      "line": 510,
+      "line": 512,
       "command": "builtin_ai_get_model_info",
       "registered": true
     },
     {
       "file": "hooks/meeting-details/useSummaryGeneration.ts",
-      "line": 603,
+      "line": 605,
       "command": "api_cancel_summary",
       "registered": true
     },
@@ -1812,12 +1344,6 @@
       "file": "hooks/meeting-details/useTemplates.ts",
       "line": 17,
       "command": "api_list_templates",
-      "registered": true
-    },
-    {
-      "file": "hooks/useAudioPlayer.ts",
-      "line": 76,
-      "command": "read_audio_file",
       "registered": true
     },
     {
@@ -1846,25 +1372,19 @@
     },
     {
       "file": "hooks/usePaginatedTranscripts.ts",
-      "line": 77,
+      "line": 78,
       "command": "api_get_meeting_metadata",
       "registered": true
     },
     {
       "file": "hooks/usePaginatedTranscripts.ts",
-      "line": 97,
+      "line": 98,
       "command": "api_get_meeting_transcripts",
       "registered": true
     },
     {
       "file": "hooks/usePermissionCheck.ts",
-      "line": 24,
-      "command": "get_audio_devices",
-      "registered": true
-    },
-    {
-      "file": "hooks/usePermissionCheck.ts",
-      "line": 65,
+      "line": 66,
       "command": "get_audio_devices",
       "registered": true
     },
@@ -1953,6 +1473,12 @@
       "registered": true
     },
     {
+      "file": "lib/finalize-transcript.ts",
+      "line": 38,
+      "command": "finalize_local_transcript",
+      "registered": true
+    },
+    {
       "file": "lib/parakeet.ts",
       "line": 156,
       "command": "parakeet_init",
@@ -2028,6 +1554,12 @@
       "file": "lib/parakeet.ts",
       "line": 204,
       "command": "open_parakeet_models_folder",
+      "registered": true
+    },
+    {
+      "file": "lib/recordingNotification.tsx",
+      "line": 15,
+      "command": "is_stealth_mode_active",
       "registered": true
     },
     {
@@ -2139,6 +1671,12 @@
       "registered": true
     },
     {
+      "file": "services/audioDeviceService.ts",
+      "line": 9,
+      "command": "get_audio_devices",
+      "registered": true
+    },
+    {
       "file": "services/configService.ts",
       "line": 54,
       "command": "api_get_transcript_config",
@@ -2238,18 +1776,6 @@
       "file": "services/storageService.ts",
       "line": 65,
       "command": "api_get_meetings",
-      "registered": true
-    },
-    {
-      "file": "services/transcriptService.ts",
-      "line": 38,
-      "command": "get_transcript_history",
-      "registered": true
-    },
-    {
-      "file": "services/transcriptService.ts",
-      "line": 46,
-      "command": "get_transcription_status",
       "registered": true
     }
   ]

@@ -9,7 +9,8 @@
       "licenses/*": "licenses/",
       "templates/*.json": "templates/",
       "../LICENSE": "LICENSE",
-      "runtime/*.dll": ""
+      "runtime/*.dll": "",
+      "speaker-runtime/*": "speaker-runtime/"
     },
     "windows": { "signCommand": null }
   }

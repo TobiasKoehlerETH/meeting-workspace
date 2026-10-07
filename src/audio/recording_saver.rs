@@ -48,6 +48,7 @@ pub struct DeviceInfo {
 
 /// New recording saver using incremental saving strategy
 pub struct RecordingSaver {
+    save_folder: PathBuf,
     accumulation_error: Arc<Mutex<Option<String>>>,
     accumulation_task: Option<tokio::task::JoinHandle<()>>,
     incremental_saver: Option<Arc<AsyncMutex<IncrementalAudioSaver>>>,
@@ -62,6 +63,7 @@ pub struct RecordingSaver {
 impl RecordingSaver {
     pub fn new() -> Self {
         Self {
+            save_folder: super::recording_preferences::get_default_recordings_folder(),
             incremental_saver: None,
             meeting_folder: None,
             meeting_name: None,
@@ -72,6 +74,11 @@ impl RecordingSaver {
             accumulation_error: Arc::new(Mutex::new(None)),
             is_saving: Arc::new(Mutex::new(false)),
         }
+    }
+
+    /// Set the meeting name for this recording session
+    pub fn set_save_folder(&mut self, folder: PathBuf) {
+        self.save_folder = folder;
     }
 
     /// Set the meeting name for this recording session
@@ -235,10 +242,10 @@ impl RecordingSaver {
     /// * `create_checkpoints` - Whether to create .checkpoints/ directory and IncrementalAudioSaver
     fn initialize_meeting_folder(&mut self, meeting_name: &str, create_checkpoints: bool) -> Result<()> {
         // Load preferences to get base recordings folder
-        let base_folder = super::recording_preferences::get_default_recordings_folder();
+        let base_folder = self.save_folder.clone();
 
         // Create meeting folder structure (with or without .checkpoints/ subdirectory)
-        let meeting_folder = create_meeting_folder(&base_folder, meeting_name, create_checkpoints)?;
+        let meeting_folder = create_meeting_folder(&base_folder, meeting_name, false)?;
 
         // Only initialize incremental saver if checkpoints are needed (auto_save is true)
         if create_checkpoints {
@@ -261,7 +268,7 @@ impl RecordingSaver {
                 microphone: None,  // Could be enhanced to store actual device names
                 system_audio: None,
             },
-            audio_file: if create_checkpoints { if super::transcription::nemotron::is_two_stage() { "recording.wav".to_string() } else { "audio.mp4".to_string() } } else { "".to_string() },
+            audio_file: if create_checkpoints { "recording.wav".to_string() } else { "".to_string() },
             transcript_file: "transcripts.json".to_string(),
             sample_rate: 48000,
             status: "recording".to_string(),
@@ -347,7 +354,7 @@ impl RecordingSaver {
     pub fn get_stats(&self) -> (usize, u32) {
         if let Some(ref saver) = self.incremental_saver {
             if let Ok(guard) = saver.try_lock() {
-                (guard.get_checkpoint_count() as usize, 48000)
+                guard.get_stats()
             } else {
                 (0, 48000)
             }
@@ -367,7 +374,7 @@ impl RecordingSaver {
         recording_duration: Option<f64>
     ) -> Result<Option<String>, String> {
         info!("Stopping recording saver");
-        if super::transcription::nemotron::is_two_stage() {
+        {
             if let Some(task) = self.accumulation_task.take() {
                 tokio::time::timeout(std::time::Duration::from_secs(60), task).await
                     .map_err(|_| "Original audio is still being written. Recording file retained.".to_string())?

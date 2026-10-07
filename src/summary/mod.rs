@@ -1,3 +1,4 @@
+pub mod length;
 /// Summary module - handles all meeting summary generation functionality
 ///
 /// This module contains:

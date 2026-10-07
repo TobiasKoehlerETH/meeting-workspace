@@ -1,3 +1,5 @@
+import type { TranscriptUpdate } from '@/types';
+
 /**
  * IndexedDB Service for Transcript Recovery
  * Provides browser-based persistence for meeting transcripts and metadata
@@ -227,46 +229,30 @@ class IndexedDBService {
   /**
    * Save a transcript segment
    */
-  async saveTranscript(meetingId: string, transcript: any): Promise<void> {
+  async saveTranscript(meetingId: string, transcript: TranscriptUpdate): Promise<void> {
     try {
       if (!this.db) await this.init();
-
       const storedTranscript: StoredTranscript = {
-        ...transcript,
-        meetingId,
-        storedAt: Date.now()
+        ...transcript, meetingId, sequenceId: transcript.sequence_id,
+        storedAt: Date.now(),
       };
-
       const transaction = this.db!.transaction(['transcripts', 'meetings'], 'readwrite');
-      const transcriptsStore = transaction.objectStore('transcripts');
-      const meetingsStore = transaction.objectStore('meetings');
-
-      // Save transcript
       await new Promise<void>((resolve, reject) => {
-        const request = transcriptsStore.add(storedTranscript);
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
+        transaction.oncomplete = () => resolve();
+        transaction.onabort = () => reject(transaction.error);
+        transaction.onerror = () => reject(transaction.error);
+        transaction.objectStore('transcripts').add(storedTranscript);
+        const meetings = transaction.objectStore('meetings');
+        const request = meetings.get(meetingId);
+        request.onsuccess = () => {
+          const meeting = request.result as MeetingMetadata | undefined;
+          if (meeting) {
+            meetings.put({ ...meeting, lastUpdated: Date.now(), transcriptCount: meeting.transcriptCount + 1 });
+          }
+        };
       });
-
-      // Update meeting metadata
-      const meeting = await new Promise<MeetingMetadata | null>((resolve, reject) => {
-        const request = meetingsStore.get(meetingId);
-        request.onsuccess = () => resolve(request.result || null);
-        request.onerror = () => reject(request.error);
-      });
-
-      if (meeting) {
-        meeting.lastUpdated = Date.now();
-        meeting.transcriptCount += 1;
-        await new Promise<void>((resolve, reject) => {
-          const request = meetingsStore.put(meeting);
-          request.onsuccess = () => resolve();
-          request.onerror = () => reject(request.error);
-        });
-      }
     } catch (error) {
       console.warn('Failed to save transcript to IndexedDB:', error);
-      // Fail silently - don't interrupt recording
     }
   }
 

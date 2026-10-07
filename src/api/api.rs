@@ -137,6 +137,8 @@ pub struct MeetingTranscript {
     pub audio_end_time: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speaker: Option<String>,
 }
 
 /// Meeting metadata without transcripts (for pagination)
@@ -188,6 +190,8 @@ pub struct TranscriptSegment {
     pub audio_end_time: Option<f64>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub duration: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub speaker: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -524,6 +528,9 @@ pub async fn api_save_model_config<R: Runtime>(
     ollama_endpoint: Option<String>,
     _auth_token: Option<String>,
 ) -> Result<serde_json::Value, String> {
+    if provider != "builtin-ai" {
+        return Err("Select a built-in local summary model.".into());
+    }
     log_info!(
         "💾 api_save_model_config called (native): provider='{}', model='{}', whisperModel='{}', ollamaEndpoint={:?}",
         &provider,
@@ -637,8 +644,8 @@ pub async fn api_get_transcript_config<R: Runtime>(
         Ok(None) => {
             log_info!("No transcript config found, returning default.");
             Ok(Some(TranscriptConfig {
-                provider: "parakeet".to_string(),
-                model: crate::config::DEFAULT_PARAKEET_MODEL.to_string(),
+                provider: "localWhisper".to_string(),
+                model: crate::config::DEFAULT_WHISPER_MODEL.to_string(),
                 api_key: None,
             }))
         }
@@ -686,21 +693,9 @@ pub async fn api_save_transcript_config<R: Runtime>(
     );
     let pool = state.db_manager.pool();
 
-    if !matches!(provider.as_str(), "parakeet" | "localWhisper" | "openrouter" | "nemotron-parakeet") || model.trim().is_empty() {
+    if !matches!(provider.as_str(), "parakeet" | "localWhisper") || model.trim().is_empty() {
         return Err("Select a supported transcription provider and model.".into());
     }
-    if provider == "openrouter" {
-        let key = match api_key.filter(|key| !key.trim().is_empty()) {
-            Some(key) => key.trim().to_owned(),
-            None => resolve_transcript_api_key(&app, pool, &provider).await?.unwrap_or_default(),
-        };
-        crate::audio::transcription::openrouter_provider::validate_settings(&key, &model)?;
-        // Save the provider, model and key together so a failed save cannot select an unusable provider.
-        sqlx::query("INSERT INTO transcript_settings (id, provider, model, openRouterApiKey) VALUES ('1', 'openrouter', $1, $2) ON CONFLICT(id) DO UPDATE SET provider = excluded.provider, model = excluded.model, openRouterApiKey = excluded.openRouterApiKey")
-            .bind(model.trim()).bind(key).execute(pool).await.map_err(|error| error.to_string())?;
-        return Ok(serde_json::json!({ "status": "success" }));
-    }
-
     if let Err(e) = SettingsRepository::save_transcript_config(pool, &provider, &model).await {
         log_error!("Failed to save transcript config: {}", e);
         return Err(e.to_string());
@@ -918,6 +913,7 @@ pub async fn api_get_meeting_transcripts<R: Runtime>(
                     audio_start_time: t.audio_start_time,
                     audio_end_time: t.audio_end_time,
                     duration: t.duration,
+                    speaker: t.speaker,
                 })
                 .collect::<Vec<_>>();
 

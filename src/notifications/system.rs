@@ -19,6 +19,9 @@ impl<R: Runtime> SystemNotificationHandler<R> {
 
     /// Show a notification using Tauri's notification plugin
     pub async fn show_notification(&self, notification: Notification) -> Result<()> {
+        if crate::startup::is_stealth(&self.app_handle) {
+            return Ok(());
+        }
         log_info!("Attempting to show notification: {}", notification.title);
 
         // Check if DND is active and respect user settings

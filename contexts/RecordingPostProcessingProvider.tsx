@@ -3,6 +3,9 @@
 import React, { useEffect } from 'react';
 import { listen } from '@tauri-apps/api/event';
 import { useRecordingStop } from '@/hooks/useRecordingStop';
+import { TranscriptProgressBar } from '@/components/TranscriptProgressBar';
+
+const ignoreLocalState = () => {};
 
 /**
  * RecordingPostProcessingProvider
@@ -20,15 +23,14 @@ import { useRecordingStop } from '@/hooks/useRecordingStop';
 export function RecordingPostProcessingProvider({ children }: { children: React.ReactNode }) {
   // No-op functions since the global RecordingStateContext already handles state updates
   // These are only needed for the hook's local component state management
-  const setIsRecording = () => { };
-  const setIsRecordingDisabled = () => { };
 
   const {
     handleRecordingStop,
-  } = useRecordingStop(setIsRecording, setIsRecordingDisabled);
+  } = useRecordingStop(ignoreLocalState, ignoreLocalState);
 
   useEffect(() => {
     let unlistenFn: (() => void) | undefined;
+    let closed = false;
 
     const setupListener = async () => {
       try {
@@ -40,6 +42,7 @@ export function RecordingPostProcessingProvider({ children }: { children: React.
           // event.payload is the callApi boolean (true for normal stops)
           handleRecordingStop(event.payload);
         });
+        if (closed) unlistenFn();
 
         console.log('[RecordingPostProcessing] Event listener set up successfully');
       } catch (error) {
@@ -50,6 +53,7 @@ export function RecordingPostProcessingProvider({ children }: { children: React.
     setupListener();
 
     return () => {
+      closed = true;
       if (unlistenFn) {
         console.log('[RecordingPostProcessing] Cleaning up event listener');
         unlistenFn();
@@ -57,5 +61,5 @@ export function RecordingPostProcessingProvider({ children }: { children: React.
     };
   }, [handleRecordingStop]);
 
-  return <>{children}</>;
+  return <>{children}<TranscriptProgressBar /></>;
 }

@@ -213,7 +213,7 @@ impl SettingsRepository {
         let api_key_column = match provider {
             "openrouter" => "openRouterApiKey",
             "localWhisper" => "whisperApiKey",
-            "parakeet" | "nemotron-parakeet" => return Ok(None), // Local providers do not need a key
+            "parakeet" => return Ok(None), // Local providers do not need a key
             "deepgram" => "deepgramApiKey",
             "elevenLabs" => "elevenLabsApiKey",
             "groq" => "groqApiKey",

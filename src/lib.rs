@@ -49,6 +49,8 @@ pub mod groq;
 pub mod openrouter;
 pub mod parakeet_engine;
 pub mod state;
+pub mod startup;
+mod speakers;
 pub mod summary;
 pub mod tray;
 pub mod utils;
@@ -77,6 +79,17 @@ struct TranscriptionStatus {
     chunks_in_queue: usize,
     is_processing: bool,
     last_activity_ms: u64,
+}
+
+fn notify_recording_started<R: Runtime>(app: AppHandle<R>, meeting_name: Option<String>) {
+    // Capture is already active. OS notification initialization must not delay
+    // the command response and leave the Record button looking unresponsive.
+    tauri::async_runtime::spawn(async move {
+        let state = app.state::<NotificationManagerState<R>>();
+        if let Err(error) = notifications::commands::show_recording_started_notification(&app, &state, meeting_name).await {
+            log_error!("Failed to show recording notification: {}", error);
+        }
+    });
 }
 
 #[tauri::command]
@@ -113,28 +126,14 @@ async fn start_recording<R: Runtime>(
 
             log_info!("Recording started successfully");
 
-            // Show recording started notification through NotificationManager
-            // This respects user's notification preferences
-            let notification_manager_state = app.state::<NotificationManagerState<R>>();
-            if let Err(e) = notifications::commands::show_recording_started_notification(
-                &app,
-                &notification_manager_state,
-                meeting_name.clone(),
-            )
-            .await
-            {
-                log_error!(
-                    "Failed to show recording started notification: {}",
-                    e
-                );
-            } else {
-                log_info!("Successfully showed recording started notification");
-            }
+            notify_recording_started(app.clone(), meeting_name.clone());
 
             Ok(())
         }
         Err(e) => {
             log_error!("Failed to start audio recording: {}", e);
+            // Hidden sessions rely on the tray to retry after a device error.
+            tray::update_tray_menu(&app);
             Err(format!("Failed to start recording: {}", e))
         }
     }
@@ -345,26 +344,13 @@ async fn start_recording_with_devices_and_meeting<R: Runtime>(
         Ok(_) => {
             log_info!("Recording started successfully via tauri command");
 
-            // Show recording started notification through NotificationManager
-            // This respects user's notification preferences
-            let notification_manager_state = app.state::<NotificationManagerState<R>>();
-            if let Err(e) = notifications::commands::show_recording_started_notification(
-                &app,
-                &notification_manager_state,
-                meeting_name_for_notification.clone(),
-            )
-            .await
-            {
-                log_error!(
-                    "Failed to show recording started notification: {}",
-                    e
-                );
-            }
+            notify_recording_started(app.clone(), meeting_name_for_notification);
 
             Ok(())
         }
         Err(e) => {
             log_error!("Failed to start recording via tauri command: {}", e);
+            tray::update_tray_menu(&app);
             Err(e)
         }
     }
@@ -399,7 +385,9 @@ pub fn run() {
                 cwd
             );
 
-            tray::focus_main_window(app);
+            if !startup::should_start_minimized(&args, startup::is_stealth(app), app.tray_by_id("main-tray").is_some()) {
+                tray::focus_main_window(app);
+            }
         }));
     }
 
@@ -417,9 +405,22 @@ pub fn run() {
         .setup(|_app| {
             log::info!("Application setup complete");
 
+            let args: Vec<String> = std::env::args().collect();
+            let saved_stealth = startup::get_stealth_mode(_app.handle().clone()).unwrap_or(false);
+            let stealth = startup::stealth_requested(&args, saved_stealth);
+            _app.manage(startup::LaunchMode { stealth });
+
             // Initialize system tray
-            if let Err(e) = tray::create_tray(_app.handle()) {
-                log::error!("Failed to create system tray: {}", e);
+            let tray_available = match tray::create_tray(_app.handle()) {
+                Ok(()) => true,
+                Err(error) => {
+                    log::error!("Failed to create system tray: {}", error);
+                    false
+                }
+            };
+            let saved = startup::get_start_minimized(_app.handle().clone()).unwrap_or(false);
+            if !startup::should_start_minimized(&args, saved || stealth, tray_available) {
+                tray::focus_main_window(_app.handle());
             }
 
             // Initialize notification system with proper defaults
@@ -510,7 +511,7 @@ pub fn run() {
         })
         .on_window_event(|window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                if window.label() == "main" {
+                if window.label() == "main" && window.app_handle().tray_by_id("main-tray").is_some() {
                     api.prevent_close();
                     if let Err(e) = window.hide() {
                         log::error!("Failed to hide main window on close request: {}", e);
@@ -521,11 +522,21 @@ pub fn run() {
             }
         })
         .invoke_handler(tauri::generate_handler![
+            speakers::get_speaker_settings,
+            speakers::set_speaker_settings,
+            speakers::list_meeting_speakers,
+            speakers::rename_meeting_speaker,
+            startup::get_start_minimized,
+            startup::set_start_minimized,
+            startup::get_stealth_mode,
+            startup::set_stealth_mode,
+            startup::is_stealth_mode_active,
             start_recording,
             stop_recording,
             is_recording,
             get_transcription_status,
             read_audio_file,
+            audio::local_transcript::get_meeting_audio_path,
             save_transcript,
             whisper_engine::commands::whisper_init,
             whisper_engine::commands::whisper_get_available_models,
@@ -615,7 +626,6 @@ pub fn run() {
             api::api_get_transcript_config,
             api::api_save_transcript_config,
             api::api_get_transcript_api_key,
-            audio::transcription::openrouter_provider::get_openrouter_transcription_models,
             api::api_delete_meeting,
             api::api_get_meeting,
             api::api_get_meeting_metadata,
@@ -667,9 +677,7 @@ pub fn run() {
             // Language preference commands
             set_language_preference,
             audio::recording_commands::prepare_recording,
-            audio::transcription::nemotron::finalize_local_transcript,
-            audio::transcription::nemotron::get_local_pipeline_status,
-            audio::transcription::nemotron::download_nemotron_model,
+            audio::local_transcript::finalize_local_transcript,
             // Notification system commands
             notifications::commands::get_notification_settings,
             notifications::commands::set_notification_settings,

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
+import { DEFAULT_WHISPER_MODEL } from '@/constants/models';
 import { ArrowLeft, Settings2, Mic, Database as DatabaseIcon, SparkleIcon, FlaskConical } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { invoke } from '@tauri-apps/api/core';
@@ -40,7 +41,7 @@ export function SettingsPanel({ onClose }: { onClose?: () => void }) {
           console.log('Loaded saved transcript provider:', config.provider);
           setTranscriptModelConfig({
             provider: config.provider || 'localWhisper',
-            model: config.model || 'large-v3',
+            model: config.model || DEFAULT_WHISPER_MODEL,
             apiKey: config.apiKey || null
           });
         }

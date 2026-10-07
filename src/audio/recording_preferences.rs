@@ -30,7 +30,7 @@ impl Default for RecordingPreferences {
         Self {
             save_folder: get_default_recordings_folder(),
             auto_save: true,
-            file_format: "mp4".to_string(),
+            file_format: "wav".to_string(),
             preferred_mic_device: None,
             preferred_system_device: None,
             #[cfg(target_os = "macos")]
@@ -106,7 +106,7 @@ pub async fn load_recording_preferences<R: Runtime>(
     };
 
     // Try to get the preferences from store
-    let prefs = if let Some(value) = store.get("preferences") {
+    let mut prefs = if let Some(value) = store.get("preferences") {
         match serde_json::from_value::<RecordingPreferences>(value.clone()) {
             Ok(mut p) => {
                 info!("Loaded recording preferences from store");
@@ -128,6 +128,8 @@ pub async fn load_recording_preferences<R: Runtime>(
         RecordingPreferences::default()
     };
 
+    prefs.auto_save = true;
+    prefs.file_format = "wav".into();
     info!("Loaded recording preferences: save_folder={:?}, auto_save={}, format={}, mic={:?}, system={:?}",
           prefs.save_folder, prefs.auto_save, prefs.file_format,
           prefs.preferred_mic_device, prefs.preferred_system_device);
