@@ -18,6 +18,7 @@ test('finalization subscribes before invoking, filters meetings, and cleans up o
       assert.ok(callback); assert.equal(command, 'finalize_local_transcript');
       assert.equal(args.meetingId, 'one'); await pending;
     } },
+    '@/lib/transcription-estimate': { recordTiming() {} },
   });
   const job = finalizeTranscript('one', 'folder', update => updates.push(update));
   await Promise.resolve();
@@ -42,6 +43,7 @@ test('failure clears progress and listener failure does not block transcription'
         return () => cleaned++;
       } },
       '@tauri-apps/api/core': { invoke: async () => { invoked = true; throw new Error('Missing model'); } },
+      '@/lib/transcription-estimate': { recordTiming() {} },
     }, { console: { error() {} } });
     await assert.rejects(finalizeTranscript('one', 'folder', update => updates.push(update)), /Missing model/);
     assert.ok(invoked); assert.equal(updates.at(-1), null);

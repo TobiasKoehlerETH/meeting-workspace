@@ -2,7 +2,12 @@
 
 Record and save high-quality audio first. Transcribe and summarize locally when you choose.
 
-- Capture microphone and system audio into a lossless `recording.wav`.
+- Capture microphone and system audio into a lossless `recording.wav`. The home screen is one record button.
+- **Mini view** shrinks the window to a small always-on-top bar with a timer and a Stop button. Use the minimize control
+  while recording, or turn on **Mini view while recording** on the home screen to enter it automatically. The full window returns when you stop.
+- Each speech model shows its expected processing time for one hour of audio (for example `1 h audio → ~20 min`), and a saved meeting
+  shows the estimate for its own length before you click **Transcribe**. A `~` marks an estimate from model speed and this device's CPU/GPU;
+  after you transcribe, the measured time on this device replaces it.
 - Stop saves audio only. Select the saved meeting and click **Transcribe** to start local speech and speaker detection. No live transcription or automatic inference runs when recording ends.
 - **Listen to recording** plays the saved audio inside the app without loading the whole file into JavaScript.
 - A progress bar shows decoding, speaker detection, transcription, and saving stages during manual transcription.
@@ -34,7 +39,7 @@ pnpm tauri dev
 See [BUILD-WINDOWS.md](BUILD-WINDOWS.md) for native builds and [PERFORMANCE.md](PERFORMANCE.md) for processing details.
 
 The interface follows the A+P workshop style. Automatic updates and usage telemetry are removed.
-Recording controls remain available in the tray menu and main window.
+Recording controls remain available in the tray menu, the main window, and the mini view.
 
 ## Local speaker detection
 

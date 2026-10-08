@@ -9,7 +9,7 @@ import { Toaster, toast } from 'sonner'
 import "sonner/dist/styles.css"
 import { useState, useEffect, useCallback } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
-import { listen, UnlistenFn } from '@tauri-apps/api/event'
+import { listen } from '@tauri-apps/api/event'
 import { invoke } from '@tauri-apps/api/core'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { RecordingStateProvider } from '@/contexts/RecordingStateContext'
@@ -23,6 +23,8 @@ import { DownloadProgressToastProvider } from '@/components/shared/DownloadProgr
 import { RecordingPostProcessingProvider } from '@/contexts/RecordingPostProcessingProvider'
 import { ImportAudioDialog, ImportDropOverlay } from '@/components/ImportAudio'
 import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
+import { MiniRecorderProvider, useMiniRecorder } from '@/contexts/MiniRecorderContext'
+import { MiniRecorder } from '@/components/Recorder'
 import { isAudioExtension, getAudioFormatsDisplayList } from '@/constants/audioFormats'
 
 
@@ -55,7 +57,21 @@ function ConditionalImportDialog({
   );
 }
 
-// export { metadata } from './metadata'
+/** In mini view only the recorder shows; the workspace and any dialogs stay mounted but hidden (see ap-style.css). */
+function AppFrame({ children }: { children: React.ReactNode }) {
+  const { isMini } = useMiniRecorder();
+  useEffect(() => {
+    document.body.toggleAttribute('data-mini', isMini);
+  }, [isMini]);
+  return <>
+    {isMini && <MiniRecorder />}
+    <div className="flex h-screen min-w-0">
+      <Sidebar />
+      <MainContent>{children}</MainContent>
+    </div>
+    <Toaster position="bottom-center" richColors closeButton />
+  </>;
+}
 
 export default function RootLayout({
   children,
@@ -160,53 +176,15 @@ export default function RootLayout({
   // Listen for drag-drop events
   useEffect(() => {
     if (showOnboarding) return; // Don't handle drops during onboarding
-
-    const unlisteners: UnlistenFn[] = [];
-    const cleanedUpRef = { current: false };
-
-    const setupListeners = async () => {
-      // Drag enter/over - show overlay only if beta feature is enabled
-      const unlistenDragEnter = await listen('tauri://drag-enter', () => {
-        if (loadBetaFeatures().importAndRetranscribe) {
-          setShowDropOverlay(true);
-        }
-      });
-      if (cleanedUpRef.current) {
-        unlistenDragEnter();
-        return;
-      }
-      unlisteners.push(unlistenDragEnter);
-
-      // Drag leave - hide overlay
-      const unlistenDragLeave = await listen('tauri://drag-leave', () => {
-        setShowDropOverlay(false);
-      });
-      if (cleanedUpRef.current) {
-        unlistenDragLeave();
-        unlisteners.forEach(u => u());
-        return;
-      }
-      unlisteners.push(unlistenDragLeave);
-
-      // Drop - process files
-      const unlistenDrop = await listen<{ paths: string[] }>('tauri://drag-drop', (event) => {
+    const listeners = [
+      listen('tauri://drag-enter', () => setShowDropOverlay(loadBetaFeatures().importAndRetranscribe)),
+      listen('tauri://drag-leave', () => setShowDropOverlay(false)),
+      listen<{ paths: string[] }>('tauri://drag-drop', event => {
         setShowDropOverlay(false);
         handleFileDrop(event.payload.paths);
-      });
-      if (cleanedUpRef.current) {
-        unlistenDrop();
-        unlisteners.forEach(u => u());
-        return;
-      }
-      unlisteners.push(unlistenDrop);
-    };
-
-    setupListeners();
-
-    return () => {
-      cleanedUpRef.current = true;
-      unlisteners.forEach((unlisten) => unlisten());
-    };
+      }),
+    ];
+    return () => listeners.forEach(listener => void listener.then(unlisten => unlisten()));
   }, [showOnboarding, handleFileDrop]);
 
   // Handle import dialog close
@@ -234,46 +212,37 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className="ap-app font-sans antialiased">
-          <RecordingStateProvider>
+        <RecordingStateProvider>
+          <MiniRecorderProvider>
             <TranscriptProvider>
               <ConfigProvider>
                 <OllamaDownloadProvider>
                   <OnboardingProvider>
-                      <SidebarProvider>
-                        <TooltipProvider>
-                          <RecordingPostProcessingProvider>
-                            <ImportDialogProvider onOpen={handleOpenImportDialog}>
-                              {/* Download progress toast provider - listens for background downloads */}
-                              <DownloadProgressToastProvider />
-
-                              {/* Show onboarding or main app */}
-                              {showOnboarding ? (
-                                <OnboardingFlow onComplete={handleOnboardingComplete} />
-                              ) : (
-                                <div className="flex h-screen min-w-0">
-                                  <Sidebar />
-                                  <MainContent>{children}</MainContent>
-                                </div>
-                              )}
-                              {/* Import audio overlay and dialog */}
-                              <ImportDropOverlay visible={showDropOverlay} />
-                              <ConditionalImportDialog
-                                showImportDialog={showImportDialog}
-                                handleImportDialogClose={handleImportDialogClose}
-                                importFilePath={importFilePath}
-                              />
-                            </ImportDialogProvider>
-                          </RecordingPostProcessingProvider>
-                        </TooltipProvider>
-                      </SidebarProvider>
+                    <SidebarProvider>
+                      <TooltipProvider>
+                        <RecordingPostProcessingProvider>
+                          <ImportDialogProvider onOpen={handleOpenImportDialog}>
+                            <DownloadProgressToastProvider />
+                            {showOnboarding ? <>
+                              <OnboardingFlow onComplete={handleOnboardingComplete} />
+                              <Toaster position="bottom-center" richColors closeButton />
+                            </> : <AppFrame>{children}</AppFrame>}
+                            <ImportDropOverlay visible={showDropOverlay} />
+                            <ConditionalImportDialog
+                              showImportDialog={showImportDialog}
+                              handleImportDialogClose={handleImportDialogClose}
+                              importFilePath={importFilePath}
+                            />
+                          </ImportDialogProvider>
+                        </RecordingPostProcessingProvider>
+                      </TooltipProvider>
+                    </SidebarProvider>
                   </OnboardingProvider>
-
                 </OllamaDownloadProvider>
               </ConfigProvider>
             </TranscriptProvider>
-          </RecordingStateProvider>
-
-        <Toaster position="bottom-center" richColors closeButton />
+          </MiniRecorderProvider>
+        </RecordingStateProvider>
       </body>
     </html>
   )

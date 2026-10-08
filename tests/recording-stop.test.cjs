@@ -20,7 +20,7 @@ function fixture({ transcribe = async () => {}, save = async () => {}, register 
   const recordingState = { status: 'idle', setStatus: noOp, setTranscriptProgress: noOp };
   const sidebar = {
     refetchMeetings: async () => calls.push(['refresh']),
-    setCurrentMeeting: noOp, setIsMeetingActive: noOp,
+    setCurrentMeeting: noOp,
   };
   const transcript = {
     meetingTitle: 'Fallback title',
@@ -63,7 +63,7 @@ function fixture({ transcribe = async () => {}, save = async () => {}, register 
     },
     setTimeout: callback => timers.push(callback),
   });
-  function Probe() { current = useRecordingStop(noOp, noOp); return null; }
+  function Probe() { current = useRecordingStop(); return null; }
   return {
     calls, storage, get current() { return current; }, get cleaned() { return cleaned; },
     get listener() { return listener; },

@@ -1,25 +1,20 @@
 import { useState } from 'react';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
-import { ModelManager } from './WhisperModelManager';
-import { ParakeetModelManager } from './ParakeetModelManager';
+import { SpeechModelManager } from './SpeechModelManager';
 import { useRecordingState } from '@/contexts/RecordingStateContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { LanguageSelection } from './LanguageSelection';
 import { SpeakerSettings } from './SpeakerSettings';
+import type { SpeechProvider } from '@/lib/speech-models';
 
 export interface TranscriptModelProps {
-    provider: 'localWhisper' | 'parakeet';
+    provider: SpeechProvider;
     model: string;
     apiKey?: string | null;
 }
-export interface TranscriptSettingsProps {
-    transcriptModelConfig: TranscriptModelProps;
-    setTranscriptModelConfig: (config: TranscriptModelProps) => void;
-    onModelSelect?: () => void;
-}
-export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelConfig, onModelSelect }: TranscriptSettingsProps) {
+
+export function TranscriptSettings({ onModelSelect }: { onModelSelect?: () => void }) {
     const { isRecording, isProcessing } = useRecordingState();
-    const { selectedLanguage, setSelectedLanguage } = useConfig();
+    const { selectedLanguage, setSelectedLanguage, transcriptModelConfig, setTranscriptModelConfig } = useConfig();
     const [provider, setProvider] = useState(transcriptModelConfig.provider);
     const disabled = isRecording || isProcessing;
     const selectModel = (model: string) => {
@@ -28,19 +23,18 @@ export function TranscriptSettings({ transcriptModelConfig, setTranscriptModelCo
         onModelSelect?.();
     };
     return <div className="space-y-4 pb-6">
-        <SpeakerSettings disabled={disabled} />
-        <p className="text-sm text-gray-600">Recording saves audio only. Transcription runs locally when you select a saved meeting and click Transcribe. New setups use quantized Whisper Turbo; Parakeet is also available.</p>
-        <Select value={provider} onValueChange={value => setProvider(value as TranscriptModelProps['provider'])} disabled={disabled}>
-            <SelectTrigger aria-label="Local speech model"><SelectValue /></SelectTrigger>
-            <SelectContent>
-                <SelectItem value="localWhisper">Whisper · Multilingual</SelectItem>
-                <SelectItem value="parakeet">Parakeet · Faster processing</SelectItem>
-            </SelectContent>
-        </Select>
+        <p className="text-sm text-gray-600">Recording saves audio only. Transcription runs on this device when you click Transcribe on a saved meeting. Times show how long one hour of audio takes; they adapt after your first transcription.</p>
+        <div role="radiogroup" aria-label="Speech engine" className="inline-flex rounded border border-gray-300 p-0.5 text-sm">
+            {([['localWhisper', 'Whisper · any language'], ['parakeet', 'Parakeet · fastest']] as const).map(([value, label]) =>
+                <button key={value} type="button" role="radio" aria-checked={provider === value} disabled={disabled}
+                    onClick={() => setProvider(value)}
+                    className={`rounded px-3 py-1 ${provider === value ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'}`}>{label}</button>)}
+        </div>
+        {disabled
+            ? <p className="text-sm text-gray-600">Wait for recording and transcription to finish before changing models.</p>
+            : <SpeechModelManager key={provider} provider={provider} onSelect={selectModel}
+                selectedModel={transcriptModelConfig.provider === provider ? transcriptModelConfig.model : undefined} />}
         <LanguageSelection selectedLanguage={selectedLanguage} onLanguageChange={setSelectedLanguage} disabled={disabled} provider={provider} />
-        {!disabled && (provider === 'localWhisper'
-            ? <ModelManager selectedModel={transcriptModelConfig.provider === provider ? transcriptModelConfig.model : undefined} onModelSelect={selectModel} autoSave />
-            : <ParakeetModelManager selectedModel={transcriptModelConfig.provider === provider ? transcriptModelConfig.model : undefined} onModelSelect={selectModel} autoSave />)}
-        {disabled && <p className="text-sm text-gray-600">Wait for recording and transcription to finish before changing models.</p>}
+        <SpeakerSettings disabled={disabled} />
     </div>;
 }

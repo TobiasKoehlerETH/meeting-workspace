@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "next-ui",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["exec", "next", "dev", "-p", "3120"],
+      "port": 3120
+    },
+    {
+      "name": "ui-fixture",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["scripts/ui-test-server.cjs"],
+      "port": 3119
+    }
+  ]
+}

@@ -1,432 +1,174 @@
 'use client';
 
-import React, { useState, useMemo, useEffect, useCallback } from 'react';
-import { PanelLeft, File, Settings, Home, Trash2, Mic, Pencil, NotebookPen, SearchIcon, X, Upload } from 'lucide-react';
-import { useRouter, usePathname } from 'next/navigation';
-import { useSidebar } from './SidebarProvider';
-import type { CurrentMeeting } from '@/components/Sidebar/SidebarProvider';
-import { ConfirmationModal } from '../ConfirmationModel/confirmation-modal';
+import React, { useEffect, useMemo, useState } from 'react';
+import { File, Home, NotebookPen, PanelLeft, Pencil, SearchIcon, Settings, Trash2, Upload, X } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
-import { useRecordingState, RecordingStatus } from '@/contexts/RecordingStateContext';
+import { useSidebar, type CurrentMeeting } from './SidebarProvider';
+import { ConfirmationModal } from '../ConfirmationModel/confirmation-modal';
 import { useImportDialog } from '@/contexts/ImportDialogContext';
 import { useConfig } from '@/contexts/ConfigContext';
 import { SettingsPanel } from '@/components/SettingsPanel';
-
-import {
-  Dialog,
-  DialogContent,
-  DialogFooter,
-  DialogTitle,
-} from "@/components/ui/dialog"
-import { VisuallyHidden } from "@/components/ui/visually-hidden"
-
-import Info from '../Info';
+import { Dialog, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
+import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group';
+import type { SettingsTab } from '@/lib/utils';
 
-interface SidebarItem {
-  id: string;
-  title: string;
-  type: 'folder' | 'file';
-  children?: SidebarItem[];
-}
+const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
 
-const Sidebar: React.FC = () => {
+export default function Sidebar() {
   const router = useRouter();
   const pathname = usePathname();
   const {
-    currentMeeting,
-    setCurrentMeeting,
-    sidebarItems,
-    isCollapsed,
-    toggleCollapse,
-    expandSidebar,
-    handleRecordingToggle,
-    searchTranscripts,
-    searchResults,
-    isSearching,
-    meetings,
-    setMeetings
+    currentMeeting, setCurrentMeeting, isCollapsed, toggleCollapse, expandSidebar,
+    searchTranscripts, searchResults, isSearching, meetings, setMeetings,
   } = useSidebar();
-
-  // Get recording state from RecordingStateContext (single source of truth)
-  const { isRecording, status } = useRecordingState();
-  const isStarting = status === RecordingStatus.STARTING;
   const { openImportDialog } = useImportDialog();
   const { betaFeatures } = useConfig();
-  const [settingsOpen, setSettingsOpen] = useState(false);
-  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['meetings']));
-  const [searchQuery, setSearchQuery] = useState<string>('');
-  // State for edit modal
-  const [editModalState, setEditModalState] = useState<{ isOpen: boolean; meetingId: string | null; currentTitle: string }>({
-    isOpen: false,
-    meetingId: null,
-    currentTitle: ''
-  });
-  const [editingTitle, setEditingTitle] = useState<string>('');
+  const [settingsTab, setSettingsTab] = useState<SettingsTab | null>(null);
+  const [listOpen, setListOpen] = useState(true);
+  const [query, setQuery] = useState('');
+  const [renaming, setRenaming] = useState<CurrentMeeting | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
-  const openMeetingNotes = () => {
-    expandSidebar();
-    setExpandedFolders(previous => new Set(previous).add('meetings'));
-  };
-
-  const [deleteModalState, setDeleteModalState] = useState<{ isOpen: boolean; itemId: string | null }>({ isOpen: false, itemId: null });
-
-  const handleSearchChange = useCallback(async (value: string) => {
-    setSearchQuery(value);
-
-    // If search query is empty, just return to normal view
-    if (!value.trim()) return;
-
-    // Search through transcripts
-    await searchTranscripts(value);
-
-    // Make sure the meetings folder is expanded when searching
-    if (!expandedFolders.has('meetings')) {
-      const newExpanded = new Set(expandedFolders);
-      newExpanded.add('meetings');
-      setExpandedFolders(newExpanded);
-    }
-  }, [expandedFolders, searchTranscripts]);
-
-  // Combine search results with sidebar items
-  const filteredSidebarItems = useMemo(() => {
-    if (!searchQuery.trim()) return sidebarItems;
-
-    // If we have search results, highlight matching meetings
-    if (searchResults.length > 0) {
-      // Get the IDs of meetings that matched in transcripts
-      const matchedMeetingIds = new Set(searchResults.map(result => result.id));
-
-      return sidebarItems
-        .map(folder => {
-          // Always include folders in the results
-          if (folder.type === 'folder') {
-            if (!folder.children) return folder;
-
-            // Filter children based on search results or title match
-            const filteredChildren = folder.children.filter(item => {
-              // Include if the meeting ID is in our search results
-              if (matchedMeetingIds.has(item.id)) return true;
-
-              // Or if the title matches the search query
-              return item.title.toLowerCase().includes(searchQuery.toLowerCase());
-            });
-
-            return {
-              ...folder,
-              children: filteredChildren
-            };
-          }
-
-          // For non-folder items, check if they match the search
-          return (matchedMeetingIds.has(folder.id) ||
-            folder.title.toLowerCase().includes(searchQuery.toLowerCase()))
-            ? folder : undefined;
-        })
-        .filter((item): item is SidebarItem => item !== undefined); // Type-safe filter
-    } else {
-      // Fall back to title-only filtering if no transcript results
-      return sidebarItems
-        .map(folder => {
-          // Always include folders in the results
-          if (folder.type === 'folder') {
-            if (!folder.children) return folder;
-
-            // Filter children based on search query
-            const filteredChildren = folder.children.filter(item =>
-              item.title.toLowerCase().includes(searchQuery.toLowerCase())
-            );
-
-            return {
-              ...folder,
-              children: filteredChildren
-            };
-          }
-
-          // For non-folder items, check if they match the search
-          return folder.title.toLowerCase().includes(searchQuery.toLowerCase()) ? folder : undefined;
-        })
-        .filter((item): item is SidebarItem => item !== undefined); // Type-safe filter
-    }
-  }, [sidebarItems, searchQuery, searchResults, expandedFolders]);
-
-
-  const handleDelete = async (itemId: string) => {
-    console.log('Deleting item:', itemId);
-    const payload = {
-      meetingId: itemId
-    };
-
-    try {
-      const { invoke } = await import('@tauri-apps/api/core');
-      await invoke('api_delete_meeting', {
-        meetingId: itemId,
-      });
-      console.log('Meeting deleted successfully');
-      const updatedMeetings = meetings.filter((m: CurrentMeeting) => m.id !== itemId);
-      setMeetings(updatedMeetings);
-
-      // Track meeting deletion
-
-
-      // Show success toast
-      toast.success("Meeting deleted successfully", {
-        description: "All associated data has been removed"
-      });
-
-      // If deleting the active meeting, navigate to home
-      if (currentMeeting?.id === itemId) {
-        setCurrentMeeting({ id: 'intro-call', title: '+ New Call' });
-        router.push('/');
-      }
-    } catch (error) {
-      console.error('Failed to delete meeting:', error);
-      toast.error("Failed to delete meeting", {
-        description: error instanceof Error ? error.message : String(error)
-      });
-    }
-  };
-
-  const handleDeleteConfirm = () => {
-    if (deleteModalState.itemId) {
-      handleDelete(deleteModalState.itemId);
-    }
-    setDeleteModalState({ isOpen: false, itemId: null });
-  };
-
-  // Handle modal editing of meeting names
-  const handleEditStart = (meetingId: string, currentTitle: string) => {
-    setEditModalState({
-      isOpen: true,
-      meetingId: meetingId,
-      currentTitle: currentTitle
-    });
-    setEditingTitle(currentTitle);
-  };
-
-  const handleEditConfirm = async () => {
-    const newTitle = editingTitle.trim();
-    const meetingId = editModalState.meetingId;
-
-    if (!meetingId) return;
-
-    // Prevent empty titles
-    if (!newTitle) {
-      toast.error("Meeting title cannot be empty");
-      return;
-    }
-
-    try {
-      await invoke('api_save_meeting_title', {
-        meetingId: meetingId,
-        title: newTitle,
-      });
-
-      // Update local state
-      const updatedMeetings = meetings.map((m: CurrentMeeting) =>
-        m.id === meetingId ? { ...m, title: newTitle } : m
-      );
-      setMeetings(updatedMeetings);
-
-      // Update current meeting if it's the one being edited
-      if (currentMeeting?.id === meetingId) {
-        setCurrentMeeting({ id: meetingId, title: newTitle });
-      }
-
-      // Track the edit
-
-
-      toast.success("Meeting title updated successfully");
-
-      // Close modal and reset state
-      setEditModalState({ isOpen: false, meetingId: null, currentTitle: '' });
-      setEditingTitle('');
-    } catch (error) {
-      console.error('Failed to update meeting title:', error);
-      toast.error("Failed to update meeting title", {
-        description: error instanceof Error ? error.message : String(error)
-      });
-    }
-  };
-
-  const handleEditCancel = () => {
-    setEditModalState({ isOpen: false, meetingId: null, currentTitle: '' });
-    setEditingTitle('');
-  };
-
-  const toggleFolder = (folderId: string) => {
-    // Normal toggle behavior for all folders
-    const newExpanded = new Set(expandedFolders);
-    if (newExpanded.has(folderId)) {
-      newExpanded.delete(folderId);
-    } else {
-      newExpanded.add(folderId);
-    }
-    setExpandedFolders(newExpanded);
-  };
-
-  // Let the tray open the current Settings page.
+  // The tray and other pages open Settings through this global (see openSettings in lib/utils).
   useEffect(() => {
-    (window as any).openSettings = () => {
-      setSettingsOpen(true);
-    };
+    const target = window as Window & { openSettings?: (tab?: SettingsTab) => void };
+    target.openSettings = tab => setSettingsTab(tab ?? 'general');
+    return () => { delete target.openSettings; };
+  }, []);
 
-    // Cleanup on unmount
-    return () => {
-      delete (window as any).openSettings;
-    };
-  }, [router]);
+  // A meeting matches by title or by a transcript search hit.
+  const visibleMeetings = useMemo(() => {
+    const text = query.trim().toLowerCase();
+    if (!text) return meetings;
+    const hits = new Set(searchResults.map(result => result.id));
+    return meetings.filter(meeting => hits.has(meeting.id) || meeting.title.toLowerCase().includes(text));
+  }, [meetings, query, searchResults]);
 
-  // Find matching transcript snippet for a meeting item
-  const findMatchingSnippet = (itemId: string) => {
-    if (!searchQuery.trim() || !searchResults.length) return null;
-    return searchResults.find(result => result.id === itemId);
-  };
+  function search(value: string) {
+    setQuery(value);
+    setListOpen(true);
+    void searchTranscripts(value);
+  }
 
-  const renderItem = (item: SidebarItem, depth = 0) => {
-    const isActive = pathname?.includes('/meeting-details') && currentMeeting?.id === item.id;
-    const isMeetingItem = meetings.some(meeting => meeting.id === item.id);
-    const matchingResult = isMeetingItem ? findMatchingSnippet(item.id) : null;
-    if (isCollapsed) return null;
-    return (
-      <div key={item.id}>
-        <div className={`group flex min-w-0 items-center rounded-md ${isActive ? 'bg-gray-100' : 'hover:bg-gray-50'}`}>
-          <button type="button" className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm" aria-current={isActive ? 'page' : undefined} onClick={() => {
-            setCurrentMeeting({ id: item.id, title: item.title });
-            router.push(isMeetingItem ? '/meeting-details?id=' + encodeURIComponent(item.id) : '/notes/' + encodeURIComponent(item.id));
-          }}>
-            <File className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
-            <span className="min-w-0 flex-1 break-words">{item.title}</span>
-          </button>
-          {isMeetingItem && <div className="flex shrink-0 gap-1 pr-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-            <button type="button" aria-label="Edit meeting title" title={'Rename ' + item.title} onClick={() => handleEditStart(item.id, item.title)} className="rounded p-1 hover:bg-gray-100"><Pencil className="h-4 w-4" aria-hidden="true" /></button>
-            <button type="button" aria-label="Delete meeting" title={'Delete ' + item.title} onClick={() => setDeleteModalState({ isOpen: true, itemId: item.id })} className="rounded p-1 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" aria-hidden="true" /></button>
-          </div>}
+  async function deleteMeeting(meetingId: string) {
+    setDeleting(null);
+    try {
+      await invoke('api_delete_meeting', { meetingId });
+      setMeetings(meetings.filter(meeting => meeting.id !== meetingId));
+      toast.success('Meeting deleted');
+      if (currentMeeting?.id === meetingId) router.push('/');
+    } catch (error) {
+      toast.error('Failed to delete meeting', { description: errorText(error) });
+    }
+  }
+
+  async function rename() {
+    if (!renaming) return;
+    const title = renaming.title.trim();
+    if (!title) { toast.error('Meeting title cannot be empty'); return; }
+    try {
+      await invoke('api_save_meeting_title', { meetingId: renaming.id, title });
+      setMeetings(meetings.map(meeting => meeting.id === renaming.id ? { ...meeting, title } : meeting));
+      if (currentMeeting?.id === renaming.id) setCurrentMeeting({ id: renaming.id, title });
+      setRenaming(null);
+    } catch (error) {
+      toast.error('Failed to rename meeting', { description: errorText(error) });
+    }
+  }
+
+  const meetingRow = (meeting: CurrentMeeting) => {
+    const active = pathname?.includes('/meeting-details') && currentMeeting?.id === meeting.id;
+    const snippet = query.trim() && searchResults.find(result => result.id === meeting.id)?.matchContext;
+    return <li key={meeting.id}>
+      <div className={`group flex min-w-0 items-center rounded-md ${active ? 'bg-gray-100' : 'hover:bg-gray-50'}`}>
+        <button type="button" aria-current={active ? 'page' : undefined} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm"
+          onClick={() => { setCurrentMeeting(meeting); router.push('/meeting-details?id=' + encodeURIComponent(meeting.id)); }}>
+          <File className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
+          <span className="min-w-0 flex-1 break-words">{meeting.title}</span>
+        </button>
+        <div className="flex shrink-0 gap-1 pr-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+          <button type="button" aria-label="Edit meeting title" title={'Rename ' + meeting.title} onClick={() => setRenaming(meeting)} className="rounded p-1 hover:bg-gray-100"><Pencil className="h-4 w-4" aria-hidden="true" /></button>
+          <button type="button" aria-label="Delete meeting" title={'Delete ' + meeting.title} onClick={() => setDeleting(meeting.id)} className="rounded p-1 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" aria-hidden="true" /></button>
         </div>
-        {matchingResult && <p className="ml-6 px-2 pb-2 text-xs text-gray-500 line-clamp-2">{matchingResult.matchContext}</p>}
       </div>
-    );
+      {snippet && <p className="ml-6 px-2 pb-2 text-xs text-gray-500 line-clamp-2">{snippet}</p>}
+    </li>;
   };
 
-  return (
-    <>
-      <aside id="workspace-sidebar" aria-label="Workspace navigation" className={`ap-sidebar flex h-screen shrink-0 flex-col border-r bg-white ${isCollapsed ? 'w-16' : 'w-64'}`}>
-        <header className="flex h-14 shrink-0 items-center gap-2 px-3 border-b border-gray-200">
-          <button type="button" onClick={toggleCollapse} aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!isCollapsed} aria-controls="sidebar-content" title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} className="ap-nav-icon shrink-0">
-            <PanelLeft className="h-5 w-5" aria-hidden="true" />
-          </button>
-          {!isCollapsed && <span className="text-sm font-semibold leading-tight">Meeting Workspace</span>}
-        </header>
+  const label = (text: string) => !isCollapsed && <span>{text}</span>;
 
-        <nav aria-label="Main navigation" className="shrink-0 space-y-1 p-2">
-          <button type="button" aria-label="Home" aria-current={pathname === '/' ? 'page' : undefined} onClick={() => router.push('/')} className={`ap-nav-item ${pathname === '/' ? 'bg-gray-100' : ''}`} title="Home">
-            <Home className="h-5 w-5 shrink-0" aria-hidden="true" />{!isCollapsed && <span>Home</span>}
-          </button>
-          <button type="button" aria-label={isStarting ? 'Starting recording' : isRecording ? 'Recording in progress' : 'Start recording'} disabled={isRecording || isStarting} onClick={handleRecordingToggle} className="ap-nav-item" title={isStarting ? 'Starting recording…' : isRecording ? 'Recording in progress' : 'Start recording'}>
-            <Mic className={'h-5 w-5 shrink-0 text-blue-600' + (isStarting ? ' animate-pulse' : '')} aria-hidden="true" />{!isCollapsed && <span>{isStarting ? 'Starting…' : isRecording ? 'Recording' : 'Start recording'}</span>}
-          </button>
-          {betaFeatures.importAndRetranscribe && <button type="button" aria-label="Import audio" onClick={() => openImportDialog()} className="ap-nav-item" title="Import audio">
-            <Upload className="h-5 w-5 shrink-0" aria-hidden="true" />{!isCollapsed && <span>Import audio</span>}
-          </button>}
-        </nav>
+  return <>
+    <aside id="workspace-sidebar" aria-label="Workspace navigation" className={`ap-sidebar flex h-screen shrink-0 flex-col border-r bg-white ${isCollapsed ? 'w-16' : 'w-64'}`}>
+      <header className="flex h-14 shrink-0 items-center gap-2 border-b border-gray-200 px-3">
+        <button type="button" onClick={toggleCollapse} aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} aria-expanded={!isCollapsed} aria-controls="sidebar-content" title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'} className="ap-nav-icon shrink-0">
+          <PanelLeft className="h-5 w-5" aria-hidden="true" />
+        </button>
+        {!isCollapsed && <span className="text-sm font-semibold leading-tight">Meeting Workspace</span>}
+      </header>
 
-        <div id="sidebar-content" className="min-h-0 flex-1 overflow-y-auto custom-scrollbar px-2">
-          {isCollapsed ? <button type="button" aria-label="Meeting notes" onClick={openMeetingNotes} className="ap-nav-item" title="Meeting notes"><NotebookPen className="h-5 w-5" aria-hidden="true" /></button> : (
-            <details open={expandedFolders.has('meetings')} onToggle={event => {
-              const open = event.currentTarget.open;
-              setExpandedFolders(previous => { const next = new Set(previous); if (open) next.add('meetings'); else next.delete('meetings'); return next; });
-            }}>
-              <summary className="ap-nav-item cursor-pointer list-none" aria-label="Meeting notes"><NotebookPen className="h-5 w-5 shrink-0" aria-hidden="true" /><span>Meeting notes</span></summary>
-              <div className="py-2">
-                <InputGroup>
-                  <InputGroupInput aria-label="Search meetings" placeholder="Search meetings" value={searchQuery} onChange={event => handleSearchChange(event.target.value)} />
-                  <InputGroupAddon><SearchIcon className="h-4 w-4" /></InputGroupAddon>
-                  {searchQuery && <InputGroupAddon align="inline-end"><InputGroupButton type="button" aria-label="Clear search" onClick={() => handleSearchChange('')}><X /></InputGroupButton></InputGroupAddon>}
-                </InputGroup>
-              </div>
-              <div id="meeting-list" className="space-y-1 pb-4">
-                {isSearching && <p className="px-2 text-xs text-gray-500" role="status">Searching...</p>}
-                {filteredSidebarItems.filter(item => item.type === 'folder' && item.children).flatMap(item => item.children!.map(child => renderItem(child, 1)))}
-                {meetings.length === 0 && <p className="px-2 py-3 text-sm text-gray-500">No saved meetings.</p>}
-              </div>
-            </details>
-          )}
-        </div>
+      <nav aria-label="Main navigation" className="shrink-0 space-y-1 p-2">
+        <button type="button" aria-label="Home" title="Home" aria-current={pathname === '/' ? 'page' : undefined} onClick={() => router.push('/')} className={`ap-nav-item ${pathname === '/' ? 'bg-gray-100' : ''}`}>
+          <Home className="h-5 w-5 shrink-0" aria-hidden="true" />{label('Home')}
+        </button>
+        {betaFeatures.importAndRetranscribe && <button type="button" aria-label="Import audio" title="Import audio" onClick={() => openImportDialog()} className="ap-nav-item">
+          <Upload className="h-5 w-5 shrink-0" aria-hidden="true" />{label('Import audio')}
+        </button>}
+      </nav>
 
-        <footer className="shrink-0 border-t border-gray-200 space-y-1 p-2">
-          <button type="button" aria-label="Settings" aria-haspopup="dialog" onClick={() => setSettingsOpen(true)} className="ap-nav-item" title="Settings"><Settings className="h-5 w-5 shrink-0" aria-hidden="true" />{!isCollapsed && <span>Settings</span>}</button>
-          <Info isCollapsed={isCollapsed} />
-        </footer>
-      </aside>
-
-      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
-        <DialogContent aria-describedby={undefined} className="ap-app h-[90vh] max-h-[800px] max-w-[960px] overflow-hidden p-0 gap-0">
-          <VisuallyHidden><DialogTitle>Settings</DialogTitle></VisuallyHidden>
-          <SettingsPanel onClose={() => setSettingsOpen(false)} />
-        </DialogContent>
-      </Dialog>
-
-      {/* Confirmation Modal for Delete */}
-      <ConfirmationModal
-        isOpen={deleteModalState.isOpen}
-        text="Delete this meeting and its saved data. This cannot be undone."
-        onConfirm={handleDeleteConfirm}
-        onCancel={() => setDeleteModalState({ isOpen: false, itemId: null })}
-      />
-
-      {/* Edit Meeting Title Modal */}
-      <Dialog open={editModalState.isOpen} onOpenChange={(open) => {
-        if (!open) handleEditCancel();
-      }}>
-        <DialogContent className="sm:max-w-[425px]">
-          <VisuallyHidden>
-            <DialogTitle>Edit Meeting Title</DialogTitle>
-          </VisuallyHidden>
-          <div className="py-4">
-            <h3 className="text-lg font-semibold mb-4">Edit Meeting Title</h3>
-            <div className="space-y-4">
-              <div>
-                <label htmlFor="meeting-title" className="block text-sm font-medium text-gray-700 mb-2">
-                  Meeting Title
-                </label>
-                <input
-                  id="meeting-title"
-                  type="text"
-                  value={editingTitle}
-                  onChange={(e) => setEditingTitle(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      handleEditConfirm();
-                    } else if (e.key === 'Escape') {
-                      handleEditCancel();
-                    }
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter meeting title"
-                  autoFocus
-                />
-              </div>
+      <div id="sidebar-content" className="min-h-0 flex-1 overflow-y-auto custom-scrollbar px-2">
+        {isCollapsed
+          ? <button type="button" aria-label="Meeting notes" title="Meeting notes" onClick={() => { expandSidebar(); setListOpen(true); }} className="ap-nav-item"><NotebookPen className="h-5 w-5" aria-hidden="true" /></button>
+          : <details open={listOpen} onToggle={event => setListOpen(event.currentTarget.open)}>
+            <summary className="ap-nav-item cursor-pointer list-none" aria-label="Meeting notes"><NotebookPen className="h-5 w-5 shrink-0" aria-hidden="true" /><span>Meeting notes</span></summary>
+            <div className="py-2">
+              <InputGroup>
+                <InputGroupInput aria-label="Search meetings" placeholder="Search meetings" value={query} onChange={event => search(event.target.value)} />
+                <InputGroupAddon><SearchIcon className="h-4 w-4" /></InputGroupAddon>
+                {query && <InputGroupAddon align="inline-end"><InputGroupButton type="button" aria-label="Clear search" onClick={() => search('')}><X /></InputGroupButton></InputGroupAddon>}
+              </InputGroup>
             </div>
-          </div>
-          <DialogFooter>
-            <button
-              onClick={handleEditCancel}
-              className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleEditConfirm}
-              className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors"
-            >
-              Save
-            </button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </>
-  );
-};
+            <ul id="meeting-list" className="space-y-1 pb-4">
+              {isSearching && <li className="px-2 text-xs text-gray-500" role="status">Searching...</li>}
+              {visibleMeetings.map(meetingRow)}
+              {meetings.length === 0 && <li className="px-2 py-3 text-sm text-gray-500">No saved meetings.</li>}
+            </ul>
+          </details>}
+      </div>
 
-export default Sidebar;
+      <footer className="shrink-0 border-t border-gray-200 p-2">
+        <button type="button" aria-label="Settings" title="Settings" aria-haspopup="dialog" onClick={() => setSettingsTab('general')} className="ap-nav-item">
+          <Settings className="h-5 w-5 shrink-0" aria-hidden="true" />{label('Settings')}
+        </button>
+      </footer>
+    </aside>
+
+    <Dialog open={settingsTab !== null} onOpenChange={open => { if (!open) setSettingsTab(null); }}>
+      <DialogContent aria-describedby={undefined} className="ap-app block h-[min(90vh,800px)] w-[calc(100vw-2rem)] max-w-[960px] overflow-hidden p-0">
+        <VisuallyHidden><DialogTitle>Settings</DialogTitle></VisuallyHidden>
+        {settingsTab && <SettingsPanel initialTab={settingsTab} />}
+      </DialogContent>
+    </Dialog>
+
+    <ConfirmationModal isOpen={deleting !== null} text="Delete this meeting and its saved data. This cannot be undone."
+      onConfirm={() => deleting && void deleteMeeting(deleting)} onCancel={() => setDeleting(null)} />
+
+    <Dialog open={renaming !== null} onOpenChange={open => { if (!open) setRenaming(null); }}>
+      <DialogContent aria-describedby={undefined} className="sm:max-w-[425px]">
+        <DialogTitle>Rename meeting</DialogTitle>
+        <form onSubmit={event => { event.preventDefault(); void rename(); }}>
+          <label htmlFor="meeting-title" className="mb-2 block text-sm font-medium text-gray-700">Meeting title</label>
+          <input id="meeting-title" type="text" autoFocus value={renaming?.title ?? ''}
+            onChange={event => setRenaming(previous => previous && { ...previous, title: event.target.value })}
+            className="w-full rounded-md border border-gray-300 px-3 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-gray-900" />
+          <DialogFooter className="mt-6">
+            <button type="button" onClick={() => setRenaming(null)} className="rounded-md bg-gray-100 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-200">Cancel</button>
+            <button type="submit" className="rounded-md bg-gray-900 px-4 py-2 text-sm font-medium text-white hover:bg-gray-700">Save</button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  </>;
+}

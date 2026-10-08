@@ -1,16 +1,36 @@
 use tauri::{AppHandle, Manager, Runtime};
 
-/// Resolve only a saved meeting's audio and grant that single file to the player.
-#[tauri::command]
-pub async fn get_meeting_audio_path<R: Runtime>(app: AppHandle<R>, meeting_id: String) -> Result<String, String> {
+async fn meeting_audio_file<R: Runtime>(app: &AppHandle<R>, meeting_id: String) -> Result<std::path::PathBuf, String> {
     let state = app.state::<crate::state::AppState>();
     let folder: Option<String> = sqlx::query_scalar("SELECT folder_path FROM meetings WHERE id = ?")
         .bind(meeting_id).fetch_optional(state.db_manager.pool()).await
         .map_err(|e| e.to_string())?.flatten();
     let folder = folder.ok_or("This meeting has no saved audio folder.")?;
-    let path = super::retranscription::find_audio_file(std::path::Path::new(&folder)).map_err(|e| e.to_string())?;
+    super::retranscription::find_audio_file(std::path::Path::new(&folder)).map_err(|e| e.to_string())
+}
+
+/// Resolve only a saved meeting's audio and grant that single file to the player.
+#[tauri::command]
+pub async fn get_meeting_audio_path<R: Runtime>(app: AppHandle<R>, meeting_id: String) -> Result<String, String> {
+    let path = meeting_audio_file(&app, meeting_id).await?;
     app.asset_protocol_scope().allow_file(&path).map_err(|e| e.to_string())?;
     Ok(path.to_string_lossy().into_owned())
+}
+
+/// Read the recording length from the file header so the UI can estimate processing time.
+#[tauri::command]
+pub async fn get_meeting_audio_duration<R: Runtime>(app: AppHandle<R>, meeting_id: String) -> Result<f64, String> {
+    let path = meeting_audio_file(&app, meeting_id).await?;
+    super::import::extract_duration_from_metadata(&path).map_err(|e| e.to_string())
+}
+
+/// Hardware facts the UI uses to estimate local transcription time.
+#[tauri::command]
+pub fn get_transcription_hardware() -> serde_json::Value {
+    serde_json::json!({
+        "cpu_cores": super::hardware_detector::HardwareProfile::detect().cpu_cores,
+        "gpu_backend": crate::whisper_engine::WhisperCompiledBackend::current().as_str(),
+    })
 }
 
 /// Transcribe a saved meeting locally. Keep the audio intact if inference fails.
@@ -36,9 +56,13 @@ pub async fn finalize_local_transcript<R: Runtime>(
         return Err("Select a local speech model in Settings > Transcription.".into());
     }
     let language = crate::get_language_preference_internal();
+    let speakers = crate::speakers::get_speaker_settings(app.clone()).map(|s| s.enabled).unwrap_or(false);
     let result = super::retranscription::start_retranscription(
         app.clone(), meeting_id, folder.to_string_lossy().into_owned(),
-        language, Some(config.model), Some(config.provider),
+        language, Some(config.model.clone()), Some(config.provider),
     ).await.map_err(|error| error.to_string())?;
-    Ok(serde_json::json!({ "segments": result.segments_count, "status": "final" }))
+    Ok(serde_json::json!({
+        "segments": result.segments_count, "status": "final",
+        "duration_seconds": result.duration_seconds, "model": config.model, "speakers": speakers,
+    }))
 }

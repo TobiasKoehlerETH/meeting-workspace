@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useTranscripts } from '@/contexts/TranscriptContext';
-import { useSidebar } from '@/components/Sidebar/SidebarProvider';
 import { useConfig } from '@/contexts/ConfigContext';
 import { useRecordingState, RecordingStatus } from '@/contexts/RecordingStateContext';
 import { recordingService } from '@/services/recordingService';
@@ -11,12 +10,10 @@ import { toast } from 'sonner';
 export function useRecordingStart(
   isRecording: boolean,
   setIsRecording: (value: boolean) => void,
-  showModal?: (name: 'modelSelector', message?: string) => void
 ): { handleRecordingStart: () => Promise<void>; isAutoStarting: boolean } {
   const [isAutoStarting, setIsAutoStarting] = useState(false);
   const starting = useRef(false);
   const { setMeetingTitle } = useTranscripts();
-  const { setIsMeetingActive } = useSidebar();
   const { selectedDevices, devicesLoaded } = useConfig();
   const { setStatus, status } = useRecordingState();
 
@@ -35,19 +32,15 @@ export function useRecordingStart(
       await recordingService.startRecordingWithDevices(selectedDevices?.micDevice || null, selectedDevices?.systemDevice || null, title);
       setMeetingTitle(title);
       setIsRecording(true);
-      setIsMeetingActive(true);
       // Notification failure must not mark an active recording as stopped.
       void showRecordingNotification().catch(error => console.error('Cannot show recording notification:', error));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       setStatus(RecordingStatus.ERROR, message);
       setIsRecording(false);
-      if (/model.*(not|missing|download)|no.*model|API key|speech model/i.test(message)) {
-        showModal?.('modelSelector', message);
-      }
       throw error;
     } finally { starting.current = false; }
-  }, [isRecording, selectedDevices, devicesLoaded, status, setMeetingTitle, setIsRecording, setIsMeetingActive, setStatus, showModal]);
+  }, [isRecording, selectedDevices, devicesLoaded, status, setMeetingTitle, setIsRecording, setStatus]);
 
   useEffect(() => {
     const startFromSidebar = async () => {

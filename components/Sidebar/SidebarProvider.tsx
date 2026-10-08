@@ -1,323 +1,120 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { invoke } from '@tauri-apps/api/core';
-import { useRecordingState } from '@/contexts/RecordingStateContext';
-
-
-interface SidebarItem {
-  id: string;
-  title: string;
-  type: 'folder' | 'file';
-  children?: SidebarItem[];
-}
 
 export interface CurrentMeeting {
   id: string;
   title: string;
 }
 
-// Search result type for transcript search
 interface TranscriptSearchResult {
   id: string;
   title: string;
   matchContext: string;
   timestamp: string;
-};
+}
 
 interface SidebarContextType {
   currentMeeting: CurrentMeeting | null;
   setCurrentMeeting: (meeting: CurrentMeeting | null) => void;
-  sidebarItems: SidebarItem[];
   isCollapsed: boolean;
   toggleCollapse: () => void;
   expandSidebar: () => void;
   meetings: CurrentMeeting[];
   setMeetings: (meetings: CurrentMeeting[]) => void;
-  isMeetingActive: boolean;
-  setIsMeetingActive: (active: boolean) => void;
-  handleRecordingToggle: () => void;
   searchTranscripts: (query: string) => Promise<void>;
   searchResults: TranscriptSearchResult[];
   isSearching: boolean;
-  setServerAddress: (address: string) => void;
-  serverAddress: string;
-  transcriptServerAddress: string;
-  setTranscriptServerAddress: (address: string) => void;
-  // Summary polling management
-  activeSummaryPolls: Map<string, NodeJS.Timeout>;
   startSummaryPolling: (meetingId: string, processId: string, onUpdate: (result: any) => void) => void;
   stopSummaryPolling: (meetingId: string) => void;
-  // Refetch meetings from backend
   refetchMeetings: () => Promise<void>;
-
 }
 
 const SidebarContext = createContext<SidebarContextType | null>(null);
 
 export const useSidebar = () => {
   const context = useContext(SidebarContext);
-  if (!context) {
-    throw new Error('useSidebar must be used within a SidebarProvider');
-  }
+  if (!context) throw new Error('useSidebar must be used within a SidebarProvider');
   return context;
 };
 
+const HOME_MEETING = { id: 'intro-call', title: '+ New Call' };
+const POLL_MS = 5000;
+const MAX_POLLS = 200; // slightly longer than the backend's 15-minute summary timeout
+const FINISHED = ['completed', 'error', 'failed', 'cancelled'];
+
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [currentMeeting, setCurrentMeeting] = useState<CurrentMeeting | null>({ id: 'intro-call', title: '+ New Call' });
+  const pathname = usePathname();
+  const [currentMeeting, setCurrentMeeting] = useState<CurrentMeeting | null>(HOME_MEETING);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [meetings, setMeetings] = useState<CurrentMeeting[]>([]);
-  const [sidebarItems, setSidebarItems] = useState<SidebarItem[]>([]);
-  const [isMeetingActive, setIsMeetingActive] = useState(false);
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<TranscriptSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
-  const [serverAddress, setServerAddress] = useState('');
-  const [transcriptServerAddress, setTranscriptServerAddress] = useState('');
-  const [activeSummaryPolls, setActiveSummaryPolls] = useState<Map<string, NodeJS.Timeout>>(new Map());
+  // Timers live in a ref: starting or stopping a poll must not re-render the app.
+  const polls = useRef(new Map<string, ReturnType<typeof setInterval>>());
 
-  // Use recording state from RecordingStateContext (single source of truth)
-  const { isRecording } = useRecordingState();
-
-  const pathname = usePathname();
-  const router = useRouter();
-
-  // Extract fetchMeetings as a reusable function
-  const fetchMeetings = React.useCallback(async () => {
-    if (serverAddress) {
-      try {
-        const meetings = await invoke('api_get_meetings') as Array<{ id: string, title: string }>;
-        const transformedMeetings = meetings.map((meeting: any) => ({
-          id: meeting.id,
-          title: meeting.title
-        }));
-        setMeetings(transformedMeetings);
-
-      } catch (error) {
-        console.error('Error fetching meetings:', error);
-        setMeetings([]);
-
-      }
+  const refetchMeetings = useCallback(async () => {
+    try {
+      const list = await invoke<CurrentMeeting[]>('api_get_meetings');
+      setMeetings(list.map(({ id, title }) => ({ id, title })));
+    } catch (error) {
+      console.error('Error fetching meetings:', error);
+      setMeetings([]);
     }
-  }, [serverAddress]);
-
-  useEffect(() => {
-    fetchMeetings();
-  }, [serverAddress, fetchMeetings]);
-
-  useEffect(() => {
-    const fetchSettings = async () => {
-      setServerAddress('http://localhost:5167');
-      setTranscriptServerAddress('http://127.0.0.1:8178/stream');
-    };
-    fetchSettings();
   }, []);
 
-  const baseItems: SidebarItem[] = [
-    {
-      id: 'meetings',
-      title: 'Meeting notes',
-      type: 'folder' as const,
-      children: [
-        ...meetings.map(meeting => ({ id: meeting.id, title: meeting.title, type: 'file' as const }))
-      ]
-    },
-  ];
+  useEffect(() => { void refetchMeetings(); }, [refetchMeetings]);
+  useEffect(() => { if (pathname === '/') setCurrentMeeting(HOME_MEETING); }, [pathname]);
 
-
-  const toggleCollapse = () => {
-    setIsCollapsed(previous => !previous);
-  };
-
-  const expandSidebar = () => setIsCollapsed(false);
-
-  // Update current meeting when on home page
-  useEffect(() => {
-    if (pathname === '/') {
-      setCurrentMeeting({ id: 'intro-call', title: '+ New Call' });
-    }
-    setSidebarItems(baseItems);
-  }, [pathname]);
-
-  // Update sidebar items when meetings change
-  useEffect(() => {
-    setSidebarItems(baseItems);
-  }, [meetings]);
-
-  // Function to handle recording toggle from sidebar
-  const handleRecordingToggle = () => {
-    if (!isRecording) {
-      // Check if already on home page
-      if (pathname === '/') {
-        // Already on home - trigger recording directly via custom event
-        console.log('Triggering recording from sidebar (already on home page)');
-        window.dispatchEvent(new CustomEvent('start-recording-from-sidebar'));
-      } else {
-        // Not on home - navigate and use auto-start mechanism
-        console.log('Navigating to home page with auto-start flag');
-        sessionStorage.setItem('autoStartRecording', 'true');
-        router.push('/');
-      }
-
-      // Track recording initiation from sidebar
-
-    }
-    // The actual recording start/stop is handled in the Home component
-  };
-
-  // Function to search through meeting transcripts
-  const searchTranscripts = async (query: string) => {
-    if (!query.trim()) {
-      setSearchResults([]);
-      return;
-    }
-
+  const searchTranscripts = useCallback(async (query: string) => {
+    if (!query.trim()) { setSearchResults([]); return; }
+    setIsSearching(true);
     try {
-      setIsSearching(true);
-
-
-      const results = await invoke('api_search_transcripts', { query }) as TranscriptSearchResult[];
-      setSearchResults(results);
+      setSearchResults(await invoke<TranscriptSearchResult[]>('api_search_transcripts', { query }));
     } catch (error) {
       console.error('Error searching transcripts:', error);
       setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
-  };
+  }, []);
 
-  // Summary polling management
-  const startSummaryPolling = React.useCallback((
-    meetingId: string,
-    processId: string,
-    onUpdate: (result: any) => void
-  ) => {
-    // Stop existing poll for this meeting if any
-    if (activeSummaryPolls.has(meetingId)) {
-      clearInterval(activeSummaryPolls.get(meetingId)!);
-    }
+  const stopSummaryPolling = useCallback((meetingId: string) => {
+    clearInterval(polls.current.get(meetingId));
+    polls.current.delete(meetingId);
+  }, []);
 
-    console.log(`📊 Starting polling for meeting ${meetingId}, process ${processId}`);
-
-    let pollCount = 0;
-    const MAX_POLLS = 200; // ~16.5 minutes at 5-second intervals (slightly longer than backend's 15-min timeout to avoid race conditions)
-
-    const pollInterval = setInterval(async () => {
-      pollCount++;
-
-      // Timeout safety: Stop after 10 minutes
-      if (pollCount >= MAX_POLLS) {
-        console.warn(`⏱️ Polling timeout for ${meetingId} after ${MAX_POLLS} iterations`);
-        clearInterval(pollInterval);
-        setActiveSummaryPolls(prev => {
-          const next = new Map(prev);
-          next.delete(meetingId);
-          return next;
-        });
-        onUpdate({
-          status: 'error',
-          error: 'Summary generation timed out after 15 minutes. Please try again or check your model configuration.'
-        });
+  const startSummaryPolling = useCallback((meetingId: string, processId: string, onUpdate: (result: any) => void) => {
+    stopSummaryPolling(meetingId);
+    let count = 0;
+    polls.current.set(meetingId, setInterval(async () => {
+      if (++count >= MAX_POLLS) {
+        stopSummaryPolling(meetingId);
+        onUpdate({ status: 'error', error: 'Summary generation timed out after 15 minutes. Please try again or check your model configuration.' });
         return;
       }
       try {
-        const result = await invoke('api_get_summary', {
-          meetingId: meetingId,
-        }) as any;
-
-        console.log(`📊 Polling update for ${meetingId}:`, result.status);
-
-        // Call the update callback with result
+        const result = await invoke<any>('api_get_summary', { meetingId });
         onUpdate(result);
-
-        // Stop polling if completed, error, failed, cancelled, or idle (after initial processing)
-        if (result.status === 'completed' || result.status === 'error' || result.status === 'failed' || result.status === 'cancelled') {
-          console.log(`Polling completed for ${meetingId}, status: ${result.status}`);
-          clearInterval(pollInterval);
-          setActiveSummaryPolls(prev => {
-            const next = new Map(prev);
-            next.delete(meetingId);
-            return next;
-          });
-        } else if (result.status === 'idle' && pollCount > 1) {
-          // If we get 'idle' after polling started, process completed/disappeared
-          console.log(`Process completed or not found for ${meetingId}, stopping poll`);
-          clearInterval(pollInterval);
-          setActiveSummaryPolls(prev => {
-            const next = new Map(prev);
-            next.delete(meetingId);
-            return next;
-          });
-        }
+        // 'idle' after the first poll means the process finished or disappeared.
+        if (FINISHED.includes(result.status) || (result.status === 'idle' && count > 1)) stopSummaryPolling(meetingId);
       } catch (error) {
-        console.error(`Polling error for ${meetingId}:`, error);
-        // Report error to callback
-        onUpdate({
-          status: 'error',
-          error: error instanceof Error ? error.message : 'Unknown error'
-        });
-        clearInterval(pollInterval);
-        setActiveSummaryPolls(prev => {
-          const next = new Map(prev);
-          next.delete(meetingId);
-          return next;
-        });
+        stopSummaryPolling(meetingId);
+        onUpdate({ status: 'error', error: error instanceof Error ? error.message : 'Unknown error' });
       }
-    }, 5000); // Poll every 5 seconds
+    }, POLL_MS));
+    console.log(`Polling summary for meeting ${meetingId}, process ${processId}`);
+  }, [stopSummaryPolling]);
 
-    setActiveSummaryPolls(prev => new Map(prev).set(meetingId, pollInterval));
-  }, [activeSummaryPolls]);
+  useEffect(() => () => polls.current.forEach(clearInterval), []);
 
-  const stopSummaryPolling = React.useCallback((meetingId: string) => {
-    const pollInterval = activeSummaryPolls.get(meetingId);
-    if (pollInterval) {
-      console.log(`⏹️ Stopping polling for meeting ${meetingId}`);
-      clearInterval(pollInterval);
-      setActiveSummaryPolls(prev => {
-        const next = new Map(prev);
-        next.delete(meetingId);
-        return next;
-      });
-    }
-  }, [activeSummaryPolls]);
+  const value = useMemo(() => ({
+    currentMeeting, setCurrentMeeting, isCollapsed, meetings, setMeetings,
+    toggleCollapse: () => setIsCollapsed(previous => !previous), expandSidebar: () => setIsCollapsed(false),
+    searchTranscripts, searchResults, isSearching, startSummaryPolling, stopSummaryPolling, refetchMeetings,
+  }), [currentMeeting, isCollapsed, meetings, searchTranscripts, searchResults, isSearching, startSummaryPolling, stopSummaryPolling, refetchMeetings]);
 
-  // Cleanup all polling intervals on unmount
-  useEffect(() => {
-    return () => {
-      console.log('🧹 Cleaning up all summary polling intervals');
-      activeSummaryPolls.forEach(interval => clearInterval(interval));
-    };
-  }, [activeSummaryPolls]);
-
-
-
-  return (
-    <SidebarContext.Provider value={{
-      currentMeeting,
-      setCurrentMeeting,
-      sidebarItems,
-      isCollapsed,
-      toggleCollapse,
-      expandSidebar,
-      meetings,
-      setMeetings,
-      isMeetingActive,
-      setIsMeetingActive,
-      handleRecordingToggle,
-      searchTranscripts,
-      searchResults,
-      isSearching,
-      setServerAddress,
-      serverAddress,
-      transcriptServerAddress,
-      setTranscriptServerAddress,
-      activeSummaryPolls,
-      startSummaryPolling,
-      stopSummaryPolling,
-      refetchMeetings: fetchMeetings,
-
-    }}>
-      {children}
-    </SidebarContext.Provider>
-  );
+  return <SidebarContext.Provider value={value}>{children}</SidebarContext.Provider>;
 }

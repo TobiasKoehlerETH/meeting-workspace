@@ -7,66 +7,6 @@
       "handler": "{() => router.push('/')}"
     },
     {
-      "file": "app/_components/SettingsModal.tsx",
-      "line": 66,
-      "event": "onClick",
-      "handler": "{() => onClose(\"modelSettings\")\n              }"
-    },
-    {
-      "file": "app/_components/SettingsModal.tsx",
-      "line": 87,
-      "event": "onClick",
-      "handler": "{() => onClose('modelSettings')}"
-    },
-    {
-      "file": "app/_components/SettingsModal.tsx",
-      "line": 113,
-      "event": "onClick",
-      "handler": "{() => {\n                toast.success('Audio devices selected');\n                onClose('deviceSettings');\n              }}"
-    },
-    {
-      "file": "app/_components/SettingsModal.tsx",
-      "line": 133,
-      "event": "onClick",
-      "handler": "{() => onClose('languageSettings')}"
-    },
-    {
-      "file": "app/_components/SettingsModal.tsx",
-      "line": 151,
-      "event": "onClick",
-      "handler": "{() => onClose('languageSettings')}"
-    },
-    {
-      "file": "app/_components/SettingsModal.tsx",
-      "line": 171,
-      "event": "onClick",
-      "handler": "{() => onClose('modelSelector')}"
-    },
-    {
-      "file": "app/_components/SettingsModal.tsx",
-      "line": 209,
-      "event": "onClick",
-      "handler": "{() => onClose('modelSelector')}"
-    },
-    {
-      "file": "app/_components/SettingsModal.tsx",
-      "line": 227,
-      "event": "onClick",
-      "handler": "{() => onClose('errorAlert')}"
-    },
-    {
-      "file": "app/_components/SettingsModal.tsx",
-      "line": 245,
-      "event": "onClick",
-      "handler": "{() => onClose('chunkDropWarning')}"
-    },
-    {
-      "file": "app/_components/TranscriptPanel.tsx",
-      "line": 49,
-      "event": "onClick",
-      "handler": "{() => showModal('languageSettings')}"
-    },
-    {
       "file": "components/AISummary/Block.tsx",
       "line": 269,
       "event": "onClick",
@@ -98,7 +38,7 @@
     },
     {
       "file": "components/BetaSettings.tsx",
-      "line": 57,
+      "line": 54,
       "event": "onCheckedChange",
       "handler": "{(checked) => toggleBetaFeature(featureKey, checked)}"
     },
@@ -409,48 +349,6 @@
       "handler": "{goNext}"
     },
     {
-      "file": "components/ParakeetModelManager.tsx",
-      "line": 469,
-      "event": "onClick",
-      "handler": "{() => {\r\n        if (isAvailable) onSelect();\r\n      }}"
-    },
-    {
-      "file": "components/ParakeetModelManager.tsx",
-      "line": 517,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                        e.stopPropagation();\r\n                        onDelete();\r\n                      }}"
-    },
-    {
-      "file": "components/ParakeetModelManager.tsx",
-      "line": 535,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                  e.stopPropagation();\r\n                  onDownload();\r\n                }}"
-    },
-    {
-      "file": "components/ParakeetModelManager.tsx",
-      "line": 547,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                  e.stopPropagation();\r\n                  onDownload();\r\n                }}"
-    },
-    {
-      "file": "components/ParakeetModelManager.tsx",
-      "line": 560,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                    e.stopPropagation();\r\n                    onDelete();\r\n                  }}"
-    },
-    {
-      "file": "components/ParakeetModelManager.tsx",
-      "line": 569,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                    e.stopPropagation();\r\n                    onDownload();\r\n                  }}"
-    },
-    {
-      "file": "components/ParakeetModelManager.tsx",
-      "line": 596,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                  e.stopPropagation();\r\n                  onCancel();\r\n                }}"
-    },
-    {
       "file": "components/PermissionWarning.tsx",
       "line": 71,
       "event": "onClick",
@@ -470,153 +368,177 @@
     },
     {
       "file": "components/PreferenceSettings.tsx",
-      "line": 126,
+      "line": 30,
       "event": "onCheckedChange",
-      "handler": "{setNotificationsEnabled}"
+      "handler": "{toggle}"
     },
     {
-      "file": "components/PreferenceSettings.tsx",
-      "line": 145,
+      "file": "components/Recorder.tsx",
+      "line": 60,
       "event": "onClick",
-      "handler": "{() => handleOpenFolder('recordings')}"
+      "handler": "{() => void run(handleRecordingStart, 'Recording could not start', explainStartError)}"
     },
     {
-      "file": "components/RecordingControls.tsx",
-      "line": 356,
+      "file": "components/Recorder.tsx",
+      "line": 65,
       "event": "onClick",
-      "handler": "{handleStartRecording}"
+      "handler": "{() => openSettings('recording')}"
     },
     {
-      "file": "components/RecordingControls.tsx",
-      "line": 397,
+      "file": "components/Recorder.tsx",
+      "line": 68,
       "event": "onClick",
-      "handler": "{() => {\n\n                            handleStartRecording();\n                          }}"
+      "handler": "{() => openSettings('transcription')}"
     },
     {
-      "file": "components/RecordingControls.tsx",
-      "line": 424,
-      "event": "onClick",
-      "handler": "{() => {\n                              if (isPaused) {\n\n                                handleResumeRecording();\n                              } else {\n\n                           "
-    },
-    {
-      "file": "components/RecordingControls.tsx",
-      "line": 457,
-      "event": "onClick",
-      "handler": "{() => {\n\n                              handleStopRecording();\n                            }}"
-    },
-    {
-      "file": "components/RecordingControls.tsx",
-      "line": 495,
-      "event": "onClick",
-      "handler": "{onOpenDeviceSettings}"
-    },
-    {
-      "file": "components/RecordingControls.tsx",
-      "line": 512,
-      "event": "onClick",
-      "handler": "{() => setDeviceError(null)}"
-    },
-    {
-      "file": "components/RecordingSettings.tsx",
-      "line": 161,
-      "event": "onClick",
-      "handler": "{handleOpenFolder}"
-    },
-    {
-      "file": "components/RecordingSettings.tsx",
-      "line": 200,
-      "event": "onCheckedChange",
-      "handler": "{handleNotificationToggle}"
-    },
-    {
-      "file": "components/SettingsPanel.tsx",
+      "file": "components/Recorder.tsx",
       "line": 73,
+      "event": "onCheckedChange",
+      "handler": "{setAutoMini}"
+    },
+    {
+      "file": "components/Recorder.tsx",
+      "line": 89,
       "event": "onClick",
-      "handler": "{() => onClose ? onClose() : router.back()}"
+      "handler": "{() => void run(() => isPaused ? recordingService.resumeRecording() : recordingService.pauseRecording(), 'Could not change the pause state')}"
+    },
+    {
+      "file": "components/Recorder.tsx",
+      "line": 94,
+      "event": "onClick",
+      "handler": "{() => void run(stopRecording, 'Could not stop recording')}"
+    },
+    {
+      "file": "components/Recorder.tsx",
+      "line": 99,
+      "event": "onClick",
+      "handler": "{() => void enterMini()}"
+    },
+    {
+      "file": "components/Recorder.tsx",
+      "line": 118,
+      "event": "onClick",
+      "handler": "{() => void run(async () => { await exitMini(); await stopRecording(); }, 'Could not stop recording')}"
+    },
+    {
+      "file": "components/Recorder.tsx",
+      "line": 122,
+      "event": "onClick",
+      "handler": "{() => void exitMini()}"
+    },
+    {
+      "file": "components/RecordingSettings.tsx",
+      "line": 62,
+      "event": "onCheckedChange",
+      "handler": "{changeReminder}"
+    },
+    {
+      "file": "components/RecordingSettings.tsx",
+      "line": 67,
+      "event": "onClick",
+      "handler": "{() => void invoke('open_recordings_folder')}"
     },
     {
       "file": "components/SettingsPanel.tsx",
+      "line": 28,
+      "event": "onClick",
+      "handler": "{() => setActive(id)}"
+    },
+    {
+      "file": "components/Sidebar/index.tsx",
       "line": 88,
-      "event": "onValueChange",
-      "handler": "{setActiveTab}"
-    },
-    {
-      "file": "components/Sidebar/index.tsx",
-      "line": 295,
       "event": "onClick",
-      "handler": "{() => {\n            setCurrentMeeting({ id: item.id, title: item.title });\n            router.push(isMeetingItem ? '/meeting-details?id=' + encodeURIComponent(item.id) : '/notes/'"
+      "handler": "{() => { setCurrentMeeting(meeting); router.push('/meeting-details?id=' + encodeURIComponent(meeting.id)); }}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 303,
+      "line": 93,
       "event": "onClick",
-      "handler": "{() => handleEditStart(item.id, item.title)}"
+      "handler": "{() => setRenaming(meeting)}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 304,
+      "line": 94,
       "event": "onClick",
-      "handler": "{() => setDeleteModalState({ isOpen: true, itemId: item.id })}"
+      "handler": "{() => setDeleting(meeting.id)}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 316,
+      "line": 106,
       "event": "onClick",
       "handler": "{toggleCollapse}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 323,
+      "line": 113,
       "event": "onClick",
       "handler": "{() => router.push('/')}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 326,
-      "event": "onClick",
-      "handler": "{handleRecordingToggle}"
-    },
-    {
-      "file": "components/Sidebar/index.tsx",
-      "line": 329,
+      "line": 116,
       "event": "onClick",
       "handler": "{() => openImportDialog()}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 335,
+      "line": 123,
       "event": "onClick",
-      "handler": "{openMeetingNotes}"
+      "handler": "{() => { expandSidebar(); setListOpen(true); }}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 345,
+      "line": 130,
       "event": "onClick",
-      "handler": "{() => handleSearchChange('')}"
+      "handler": "{() => search('')}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 358,
+      "line": 142,
       "event": "onClick",
-      "handler": "{() => setSettingsOpen(true)}"
+      "handler": "{() => setSettingsTab('general')}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 414,
-      "event": "onClick",
-      "handler": "{handleEditCancel}"
+      "line": 161,
+      "event": "onSubmit",
+      "handler": "{event => { event.preventDefault(); void rename(); }}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 420,
+      "line": 167,
       "event": "onClick",
-      "handler": "{handleEditConfirm}"
+      "handler": "{() => setRenaming(null)}"
     },
     {
       "file": "components/SpeakerSettings.tsx",
       "line": 36,
       "event": "onCheckedChange",
       "handler": "{enabled => void save({ ...settings, enabled })}"
+    },
+    {
+      "file": "components/SpeechModelManager.tsx",
+      "line": 66,
+      "event": "onClick",
+      "handler": "{() => void select(model.name)}"
+    },
+    {
+      "file": "components/SpeechModelManager.tsx",
+      "line": 80,
+      "event": "onClick",
+      "handler": "{() => void run(model.name, () => api.cancel(model.name), 'Missing')}"
+    },
+    {
+      "file": "components/SpeechModelManager.tsx",
+      "line": 82,
+      "event": "onClick",
+      "handler": "{() => void run(model.name, () => api.remove(model.name), 'Missing')}"
+    },
+    {
+      "file": "components/SpeechModelManager.tsx",
+      "line": 84,
+      "event": "onClick",
+      "handler": "{() => void run(model.name, () => api.download(model.name), { Downloading: 0 })}"
     },
     {
       "file": "components/SummaryLanguageSettings.tsx",
@@ -662,57 +584,15 @@
     },
     {
       "file": "components/TranscriptSettings.tsx",
-      "line": 33,
-      "event": "onValueChange",
-      "handler": "{value => setProvider(value as TranscriptModelProps['provider'])}"
+      "line": 30,
+      "event": "onClick",
+      "handler": "{() => setProvider(value)}"
     },
     {
       "file": "components/ui/input-group.tsx",
       "line": 71,
       "event": "onClick",
       "handler": "{(e) => {\r\n        if ((e.target as HTMLElement).closest(\"button\")) {\r\n          return\r\n        }\r\n        e.currentTarget.parentElement?.querySelector(\"input\")?.focus()\r\n      }}"
-    },
-    {
-      "file": "components/WhisperModelManager.tsx",
-      "line": 544,
-      "event": "onClick",
-      "handler": "{() => {\r\n        if (isAvailable) onSelect();\r\n      }}"
-    },
-    {
-      "file": "components/WhisperModelManager.tsx",
-      "line": 617,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                        e.stopPropagation();\r\n                        onDelete();\r\n                      }}"
-    },
-    {
-      "file": "components/WhisperModelManager.tsx",
-      "line": 635,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                  e.stopPropagation();\r\n                  onDownload();\r\n                }}"
-    },
-    {
-      "file": "components/WhisperModelManager.tsx",
-      "line": 647,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                  e.stopPropagation();\r\n                  onDownload();\r\n                }}"
-    },
-    {
-      "file": "components/WhisperModelManager.tsx",
-      "line": 660,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                    e.stopPropagation();\r\n                    onDelete();\r\n                  }}"
-    },
-    {
-      "file": "components/WhisperModelManager.tsx",
-      "line": 669,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                    e.stopPropagation();\r\n                    onDownload();\r\n                  }}"
-    },
-    {
-      "file": "components/WhisperModelManager.tsx",
-      "line": 696,
-      "event": "onClick",
-      "handler": "{(e) => {\r\n                  e.stopPropagation();\r\n                  onCancel();\r\n                }}"
     },
     {
       "file": "lib/recordingNotification.tsx",
@@ -724,13 +604,13 @@
   "invocations": [
     {
       "file": "app/layout.tsx",
-      "line": 77,
+      "line": 93,
       "command": "get_onboarding_status",
       "registered": true
     },
     {
       "file": "app/meeting-details/page-content.tsx",
-      "line": 93,
+      "line": 76,
       "command": "api_save_model_config",
       "registered": true
     },
@@ -855,6 +735,12 @@
       "registered": true
     },
     {
+      "file": "components/MeetingDetails/TranscriptPanel.tsx",
+      "line": 40,
+      "command": "get_meeting_audio_duration",
+      "registered": true
+    },
+    {
       "file": "components/ModelSettingsModal.tsx",
       "line": 34,
       "command": "api_get_model_config",
@@ -909,12 +795,6 @@
       "registered": true
     },
     {
-      "file": "components/ParakeetModelManager.tsx",
-      "line": 200,
-      "command": "api_save_transcript_config",
-      "registered": true
-    },
-    {
       "file": "components/PermissionWarning.tsx",
       "line": 37,
       "command": "open_system_settings",
@@ -927,104 +807,50 @@
       "registered": true
     },
     {
-      "file": "components/PreferenceSettings.tsx",
-      "line": 87,
-      "command": "open_database_folder",
-      "registered": true
-    },
-    {
-      "file": "components/PreferenceSettings.tsx",
-      "line": 90,
-      "command": "open_models_folder",
-      "registered": true
-    },
-    {
-      "file": "components/PreferenceSettings.tsx",
-      "line": 93,
-      "command": "open_recordings_folder",
-      "registered": true
-    },
-    {
-      "file": "components/RecordingControls.tsx",
-      "line": 77,
-      "command": "is_recording",
-      "registered": true
-    },
-    {
-      "file": "components/RecordingControls.tsx",
-      "line": 149,
-      "command": "stop_recording",
-      "registered": true
-    },
-    {
-      "file": "components/RecordingControls.tsx",
-      "line": 211,
-      "command": "pause_recording",
-      "registered": true
-    },
-    {
-      "file": "components/RecordingControls.tsx",
-      "line": 229,
-      "command": "resume_recording",
-      "registered": true
-    },
-    {
       "file": "components/RecordingSettings.tsx",
-      "line": 36,
+      "line": 19,
       "command": "get_recording_preferences",
       "registered": true
     },
     {
       "file": "components/RecordingSettings.tsx",
-      "line": 42,
-      "command": "get_default_recordings_folder_path",
-      "registered": true
-    },
-    {
-      "file": "components/RecordingSettings.tsx",
-      "line": 87,
-      "command": "open_recordings_folder",
-      "registered": true
-    },
-    {
-      "file": "components/RecordingSettings.tsx",
-      "line": 111,
+      "line": 30,
       "command": "set_recording_preferences",
       "registered": true
     },
     {
-      "file": "components/SettingsPanel.tsx",
-      "line": 39,
-      "command": "api_get_transcript_config",
+      "file": "components/RecordingSettings.tsx",
+      "line": 67,
+      "command": "open_recordings_folder",
       "registered": true
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 163,
+      "line": 59,
       "command": "api_delete_meeting",
       "registered": true
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 221,
+      "line": 73,
       "command": "api_save_meeting_title",
       "registered": true
     },
     {
       "file": "components/Sidebar/SidebarProvider.tsx",
-      "line": 89,
+      "line": 60,
       "command": "api_get_meetings",
       "registered": true
     },
     {
       "file": "components/Sidebar/SidebarProvider.tsx",
-      "line": 179,
+      "line": 75,
       "command": "api_search_transcripts",
       "registered": true
     },
     {
       "file": "components/Sidebar/SidebarProvider.tsx",
-      "line": 224,
+      "line": 99,
       "command": "api_get_summary",
       "registered": true
     },
@@ -1065,50 +891,26 @@
       "registered": true
     },
     {
-      "file": "components/WhisperModelManager.tsx",
-      "line": 247,
-      "command": "api_save_transcript_config",
-      "registered": true
-    },
-    {
       "file": "contexts/ConfigContext.tsx",
-      "line": 166,
+      "line": 143,
       "command": "set_language_preference",
       "registered": true
     },
     {
       "file": "contexts/ConfigContext.tsx",
-      "line": 329,
+      "line": 282,
       "command": "get_notification_settings",
       "registered": true
     },
     {
       "file": "contexts/ConfigContext.tsx",
-      "line": 339,
-      "command": "get_database_directory",
-      "registered": true
-    },
-    {
-      "file": "contexts/ConfigContext.tsx",
-      "line": 340,
-      "command": "whisper_get_models_directory",
-      "registered": true
-    },
-    {
-      "file": "contexts/ConfigContext.tsx",
-      "line": 341,
-      "command": "get_default_recordings_folder_path",
-      "registered": true
-    },
-    {
-      "file": "contexts/ConfigContext.tsx",
-      "line": 363,
+      "line": 294,
       "command": "set_notification_settings",
       "registered": true
     },
     {
       "file": "contexts/ConfigContext.tsx",
-      "line": 378,
+      "line": 309,
       "command": "set_language_preference",
       "registered": true
     },
@@ -1474,92 +1276,20 @@
     },
     {
       "file": "lib/finalize-transcript.ts",
-      "line": 38,
+      "line": 40,
       "command": "finalize_local_transcript",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 156,
-      "command": "parakeet_init",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 160,
-      "command": "parakeet_get_available_models",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 164,
-      "command": "parakeet_load_model",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 168,
-      "command": "parakeet_get_current_model",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 172,
-      "command": "parakeet_is_model_loaded",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 176,
-      "command": "parakeet_transcribe_audio",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 180,
-      "command": "parakeet_get_models_directory",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 184,
-      "command": "parakeet_download_model",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 188,
-      "command": "parakeet_cancel_download",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 192,
-      "command": "parakeet_delete_corrupted_model",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 196,
-      "command": "parakeet_has_available_models",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 200,
-      "command": "parakeet_validate_model_ready",
-      "registered": true
-    },
-    {
-      "file": "lib/parakeet.ts",
-      "line": 204,
-      "command": "open_parakeet_models_folder",
       "registered": true
     },
     {
       "file": "lib/recordingNotification.tsx",
       "line": 15,
       "command": "is_stealth_mode_active",
+      "registered": true
+    },
+    {
+      "file": "lib/speech-models.ts",
+      "line": 63,
+      "command": "api_save_transcript_config",
       "registered": true
     },
     {
@@ -1593,81 +1323,15 @@
       "registered": true
     },
     {
-      "file": "lib/whisper.ts",
-      "line": 284,
-      "command": "whisper_init",
+      "file": "lib/transcription-estimate.ts",
+      "line": 59,
+      "command": "get_transcription_hardware",
       "registered": true
     },
     {
-      "file": "lib/whisper.ts",
-      "line": 288,
-      "command": "whisper_get_available_models",
-      "registered": true
-    },
-    {
-      "file": "lib/whisper.ts",
-      "line": 292,
-      "command": "whisper_load_model",
-      "registered": true
-    },
-    {
-      "file": "lib/whisper.ts",
-      "line": 296,
-      "command": "whisper_get_current_model",
-      "registered": true
-    },
-    {
-      "file": "lib/whisper.ts",
-      "line": 300,
-      "command": "whisper_is_model_loaded",
-      "registered": true
-    },
-    {
-      "file": "lib/whisper.ts",
-      "line": 304,
-      "command": "whisper_transcribe_audio",
-      "registered": true
-    },
-    {
-      "file": "lib/whisper.ts",
-      "line": 308,
-      "command": "whisper_get_models_directory",
-      "registered": true
-    },
-    {
-      "file": "lib/whisper.ts",
-      "line": 312,
-      "command": "whisper_download_model",
-      "registered": true
-    },
-    {
-      "file": "lib/whisper.ts",
-      "line": 316,
-      "command": "whisper_cancel_download",
-      "registered": true
-    },
-    {
-      "file": "lib/whisper.ts",
-      "line": 320,
-      "command": "whisper_delete_corrupted_model",
-      "registered": true
-    },
-    {
-      "file": "lib/whisper.ts",
-      "line": 324,
-      "command": "whisper_has_available_models",
-      "registered": true
-    },
-    {
-      "file": "lib/whisper.ts",
-      "line": 328,
-      "command": "whisper_validate_model_ready",
-      "registered": true
-    },
-    {
-      "file": "lib/whisper.ts",
-      "line": 332,
-      "command": "open_models_folder",
+      "file": "lib/transcription-estimate.ts",
+      "line": 61,
+      "command": "get_speaker_settings",
       "registered": true
     },
     {
@@ -1678,37 +1342,37 @@
     },
     {
       "file": "services/configService.ts",
-      "line": 54,
+      "line": 55,
       "command": "api_get_transcript_config",
       "registered": true
     },
     {
       "file": "services/configService.ts",
-      "line": 62,
+      "line": 63,
       "command": "api_get_model_config",
       "registered": true
     },
     {
       "file": "services/configService.ts",
-      "line": 70,
+      "line": 71,
       "command": "get_recording_preferences",
       "registered": true
     },
     {
       "file": "services/configService.ts",
-      "line": 78,
+      "line": 79,
       "command": "api_get_custom_openai_config",
       "registered": true
     },
     {
       "file": "services/configService.ts",
-      "line": 87,
+      "line": 88,
       "command": "api_save_custom_openai_config",
       "registered": true
     },
     {
       "file": "services/configService.ts",
-      "line": 109,
+      "line": 110,
       "command": "api_test_custom_openai_connection",
       "registered": true
     },

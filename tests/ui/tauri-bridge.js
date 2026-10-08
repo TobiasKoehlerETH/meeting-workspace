@@ -16,7 +16,7 @@
     { id: 'qa-segment-2', speaker: 'Speaker 2', text: 'The team agreed to improve navigation and test every control.', timestamp: '00:12', audio_start_time: 12, audio_end_time: 24, confidence: 0.96 },
   ];
   let modelConfig = { provider: 'builtin-ai', model: 'qwen3.5:4b', whisperModel: 'base', apiKey: 'qa-placeholder-key', ollamaEndpoint: null };
-  let transcriptConfig = { provider: 'localWhisper', model: 'large-v3', apiKey: 'qa-placeholder-key' };
+  let transcriptConfig = { provider: 'localWhisper', model: 'large-v3-turbo-q5_0', apiKey: 'qa-placeholder-key' };
   let preferences = { save_folder: root + '\\recordings', auto_save: true, file_format: 'mp4', preferred_mic_device: null, preferred_system_device: null };
   let recording = false;
   let paused = false;
@@ -27,7 +27,8 @@
   const available = scenario !== 'no-models';
   const models = {
     parakeet: [{ name: 'parakeet-tdt-0.6b-v3-int8', path: root + '\\models\\parakeet', size_mb: 670, accuracy: 'High', speed: 'Ultra Fast', quantization: 'Int8', status: available ? 'Available' : 'Missing', description: 'Test transcription model' }],
-    whisper: [{ name: 'base', path: root + '\\models\\base.bin', size_mb: 142, accuracy: 'Good', speed: 'Fast', status: available ? 'Available' : 'Missing', description: 'Test speech model' }],
+    whisper: [['large-v3-turbo-q5_0', 547], ['large-v3', 2951], ['small', 466], ['base', 142]].map(([name, size_mb], index) =>
+      ({ name, path: root + '\\models\\' + name + '.bin', size_mb, status: available && index !== 1 ? 'Available' : 'Missing' })),
     summary: [{ name: 'qwen3-0.6b', display_name: 'Qwen3 0.6B', path: root + '\\models\\qwen.gguf', size_mb: 400, context_size: 8192, gguf_file: 'qwen.gguf', description: 'Test local summary model', status: { type: available ? 'available' : 'not_downloaded' } }],
   };
   const log = [];
@@ -66,6 +67,10 @@
       if (command.startsWith('plugin:path|')) return args.paths?.join('\\') || root + (args.path ? '\\' + args.path : '');
       if (command === 'plugin:app|version') return '0.4.0';
       if (command === 'plugin:app|name') return 'Meeting Workspace';
+      if (command === 'plugin:window|inner_size') return { width: innerWidth, height: innerHeight };
+      if (command === 'plugin:window|outer_position') return { x: 0, y: 0 };
+      if (command === 'plugin:window|current_monitor') return { name: 'QA', scaleFactor: 1, position: { x: 0, y: 0 }, size: { width: 1920, height: 1080 }, workArea: { position: { x: 0, y: 0 }, size: { width: 1920, height: 1040 } } };
+      if (command === 'plugin:window|is_maximized') return false;
       if (command.startsWith('plugin:window|') || command.startsWith('plugin:webview|')) return command.endsWith('get_all_windows') ? ['main'] : null;
       if (command.startsWith('plugin:notification|')) return true;
       if (command === 'get_onboarding_status') return scenario === 'onboarding' ? null : { completed: true, current_step: 3, permissions: { microphone: 'authorized', systemAudio: 'authorized' }, model_status: { parakeet: 'downloaded', summary: 'downloaded', selected_summary_model: 'qwen3-0.6b' } };
@@ -86,8 +91,10 @@
           emit('retranscription-progress', { meeting_id: args.meetingId, progress_percentage, message });
           await new Promise(resolve => setTimeout(resolve, 400));
         }
-        return { status: 'final', segments: 2 };
+        return { status: 'final', segments: 2, duration_seconds: 1920, model: transcriptConfig.model, speakers: speakerSettings.enabled };
       }
+      if (command === 'get_meeting_audio_duration') return 1920;
+      if (command === 'get_transcription_hardware') return { cpu_cores: 8, gpu_backend: 'Cpu' };
       if (command === 'get_meeting_audio_path') return root + '\\recordings\\' + args.meetingId + '\\recording.wav';
       if (['save_onboarding_status_cmd', 'complete_onboarding', 'initialize_fresh_database', 'import_and_initialize_database'].includes(command)) return null;
       if (command === 'api_get_model_config') return modelConfig;

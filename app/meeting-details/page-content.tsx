@@ -1,8 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from 'react';
-import { motion } from 'framer-motion';
 import { Summary, SummaryResponse } from '@/types';
-import { useSidebar } from '@/components/Sidebar/SidebarProvider';
 import { invoke } from '@tauri-apps/api/core';
 import { toast } from 'sonner';
 import { TranscriptPanel } from '@/components/MeetingDetails/TranscriptPanel';
@@ -46,22 +44,13 @@ export default function PageContent({
   loadedCount?: number;
   onLoadMore?: () => void;
 }) {
-  console.log('📄 PAGE CONTENT: Initializing with data:', {
-    meetingId: meeting.id,
-    summaryDataKeys: summaryData ? Object.keys(summaryData) : null,
-    transcriptsCount: meeting.transcripts?.length
-  });
-
   // State
   const [customPrompt, setCustomPrompt] = useState<string>('');
-  const [isRecording] = useState(false);
   const [summaryResponse] = useState<SummaryResponse | null>(null);
 
   // Ref to store the modal open function from SummaryGeneratorButtonGroup
   const openModelSettingsRef = useRef<(() => void) | null>(null);
 
-  // Sidebar context
-  const { serverAddress } = useSidebar();
 
   // Get model config from ConfigContext
   const { modelConfig, setModelConfig } = useConfig();
@@ -72,18 +61,12 @@ export default function PageContent({
 
   // Callback to register the modal open function
   const handleRegisterModalOpen = (openFn: () => void) => {
-    console.log('📝 Registering modal open function in PageContent');
     openModelSettingsRef.current = openFn;
   };
 
   // Callback to trigger modal open (called from error handler)
   const handleOpenModelSettings = () => {
-    console.log('🔔 Opening model settings from PageContent');
-    if (openModelSettingsRef.current) {
-      openModelSettingsRef.current();
-    } else {
-      console.warn('⚠️ Modal open function not yet registered');
-    }
+    openModelSettingsRef.current?.();
   };
 
   // Save model config to backend database and sync via event
@@ -158,30 +141,19 @@ export default function PageContent({
   }, [shouldAutoGenerate, meeting.id]); // Re-run if meeting changes
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, ease: 'easeOut' }}
-      className="flex flex-col h-screen bg-gray-50"
-    >
+    <div className="flex flex-col h-screen bg-gray-50">
       <div className="flex flex-1 overflow-hidden">
         <TranscriptPanel
-          transcripts={meetingData.transcripts}
           customPrompt={customPrompt}
           onPromptChange={setCustomPrompt}
           onCopyTranscript={copyOperations.handleCopyTranscript}
           onOpenMeetingFolder={meetingOperations.handleOpenMeetingFolder}
-          isRecording={isRecording}
-          disableAutoScroll={true}
-          // Pagination props for efficient loading
-          usePagination={true}
-          segments={segments}
+          segments={segments ?? []}
           hasMore={hasMore}
           isLoadingMore={isLoadingMore}
           totalCount={totalCount}
           loadedCount={loadedCount}
           onLoadMore={onLoadMore}
-          // Retranscription props
           meetingId={meeting.id}
           meetingFolderPath={meeting.folder_path}
           onRefetchTranscripts={onRefetchTranscripts}
@@ -222,6 +194,6 @@ export default function PageContent({
           onOpenModelSettings={handleRegisterModalOpen}
         />
       </div>
-    </motion.div>
+    </div>
   );
 }

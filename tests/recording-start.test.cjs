@@ -11,13 +11,11 @@ test('tray start waits for saved audio devices and starts capture only once', as
   const config = { devicesLoaded: false, selectedDevices: { micDevice: null, systemDevice: null } };
   const noOp = () => {};
   const transcript = { setMeetingTitle: noOp };
-  const sidebar = { setIsMeetingActive: noOp };
   const recordingState = { setStatus: noOp, status: 'idle' };
   let finish;
   const pending = new Promise(resolve => { finish = resolve; });
   const { useRecordingStart } = load('hooks/useRecordingStart.ts', {
     '@/contexts/TranscriptContext': { useTranscripts: () => transcript },
-    '@/components/Sidebar/SidebarProvider': { useSidebar: () => sidebar },
     '@/contexts/ConfigContext': { useConfig: () => config },
     '@/contexts/RecordingStateContext': {
       useRecordingState: () => recordingState,

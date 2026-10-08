@@ -1,5 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
+import { recordTiming } from '@/lib/transcription-estimate';
 
 export interface TranscriptProgress {
   percentage: number;
@@ -35,7 +36,12 @@ export async function finalizeTranscript(
       console.error('Could not subscribe to transcript progress:', error);
       onProgress(null);
     }
-    await invoke('finalize_local_transcript', { meetingId, meetingFolderPath });
+    const started = performance.now();
+    const result = await invoke<{ duration_seconds: number; model: string; speakers: boolean } | undefined>(
+      'finalize_local_transcript', { meetingId, meetingFolderPath });
+    // Real timings calibrate the processing-time estimates shown before transcribing.
+    if (result?.duration_seconds) recordTiming({ model: result.model, audio: result.duration_seconds,
+      elapsed: (performance.now() - started) / 1000, speakers: result.speakers });
     onProgress({ percentage: 100, message: 'Transcript ready' });
   } catch (error) {
     onProgress(null);

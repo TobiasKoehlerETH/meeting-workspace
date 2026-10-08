@@ -10,38 +10,12 @@ import {
   applyPinnedSummaryLanguageToMeeting,
 } from '@/lib/summary-language-preferences';
 
-type SummaryStatus = 'idle' | 'processing' | 'summarizing' | 'regenerating' | 'completed' | 'error';
-
 // The page and the global tray handler share this job; one recording must create one meeting.
 let stopInProgress = false;
 
-interface UseRecordingStopReturn {
-  handleRecordingStop: (callApi: boolean) => Promise<void>;
-  isStopping: boolean;
-  isProcessingTranscript: boolean;
-  isSavingTranscript: boolean;
-  summaryStatus: SummaryStatus;
-  setIsStopping: (value: boolean) => void;
-}
-
-/**
- * Custom hook for managing recording stop lifecycle.
- * Saves the original audio as a meeting. Transcription starts only on request.
- *
- */
-export function useRecordingStop(
-  setIsRecording: (value: boolean) => void,
-  setIsRecordingDisabled: (value: boolean) => void
-): UseRecordingStopReturn {
-  const recordingState = useRecordingState();
-  const {
-    status,
-    setStatus,
-    setTranscriptProgress,
-    isStopping,
-    isProcessing: isProcessingTranscript,
-    isSaving: isSavingTranscript
-  } = recordingState;
+/** Saves the original audio as a meeting after capture stops. Transcription starts only on request. */
+export function useRecordingStop() {
+  const { setStatus, setTranscriptProgress } = useRecordingState();
 
   const {
     meetingTitle,
@@ -51,7 +25,6 @@ export function useRecordingStop(
   const {
     refetchMeetings,
     setCurrentMeeting,
-    setIsMeetingActive,
   } = useSidebar();
 
   const router = useRouter();
@@ -117,8 +90,6 @@ export function useRecordingStop(
 
     // Set status to STOPPING immediately
     setStatus(RecordingStatus.STOPPING);
-    setIsRecording(false);
-    setIsRecordingDisabled(true);
     try {
       // Capture has stopped and the WAV is already on disk. Persist the meeting
       // before inference so it can be recovered even when the model fails.
@@ -181,19 +152,7 @@ export function useRecordingStop(
           // Mark as completed
           setStatus(RecordingStatus.COMPLETED);
 
-          // Show success toast with navigation option
-          toast.success('Recording saved successfully!', {
-            description: 'Original audio saved. Select Transcribe in the meeting when you are ready.',
-            action: {
-              label: 'View Meeting',
-              onClick: () => {
-                router.push(`/meeting-details?id=${meetingId}`);
-
-              }
-            },
-            duration: 10000,
-          });
-
+          toast.success('Recording saved', { description: 'Click Transcribe when you are ready.' });
           router.push(`/meeting-details?id=${meetingId}`);
           setStatus(RecordingStatus.IDLE);
 
@@ -210,42 +169,22 @@ export function useRecordingStop(
         setStatus(RecordingStatus.IDLE);
       }
 
-      setIsMeetingActive(false);
-      // isRecording already set to false at function start
-      setIsRecordingDisabled(false);
     } catch (error) {
       console.error('Error in handleRecordingStop:', error);
       setStatus(RecordingStatus.ERROR, error instanceof Error ? error.message : 'Unknown error');
-      // isRecording already set to false at function start
-      setIsRecordingDisabled(false);
     } finally {
       // Always reset the guard flag when done
       stopInProgress = false;
     }
   }, [
-    setIsRecording,
-    setIsRecordingDisabled,
     setStatus,
     setTranscriptProgress,
     meetingTitle,
     markMeetingAsSaved,
     refetchMeetings,
     setCurrentMeeting,
-    setIsMeetingActive,
     router,
   ]);
 
-  // Derive summaryStatus from RecordingStatus for backward compatibility
-  const summaryStatus: SummaryStatus = status === RecordingStatus.PROCESSING_TRANSCRIPTS ? 'processing' : 'idle';
-
-  return {
-    handleRecordingStop,
-    isStopping,
-    isProcessingTranscript,
-    isSavingTranscript,
-    summaryStatus,
-    setIsStopping: (value: boolean) => {
-      setStatus(value ? RecordingStatus.STOPPING : RecordingStatus.IDLE);
-    },
-  };
+  return { handleRecordingStop };
 }

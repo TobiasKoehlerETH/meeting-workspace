@@ -1,110 +1,81 @@
 "use client";
 
-import { Transcript, TranscriptSegmentData } from '@/types';
+import { useEffect, useState } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { TranscriptSegmentData } from '@/types';
 import { VirtualizedTranscriptView } from '@/components/VirtualizedTranscriptView';
+import { useConfig } from '@/contexts/ConfigContext';
+import { useRecordingState } from '@/contexts/RecordingStateContext';
+import { formatEstimate, useTranscriptionEstimate } from '@/lib/transcription-estimate';
+import { modelLabel } from '@/lib/speech-models';
+import { formatClock } from '@/lib/utils';
 import { TranscriptButtonGroup } from './TranscriptButtonGroup';
-import { useMemo } from 'react';
 import { SpeakerNames } from './SpeakerNames';
 import { RecordingPlayer } from './RecordingPlayer';
 
 interface TranscriptPanelProps {
-  transcripts: Transcript[];
+  segments: TranscriptSegmentData[];
   customPrompt: string;
   onPromptChange: (value: string) => void;
   onCopyTranscript: () => void;
   onOpenMeetingFolder: () => Promise<void>;
-  isRecording: boolean;
-  disableAutoScroll?: boolean;
-
-  // Optional pagination props (when using virtualization)
-  usePagination?: boolean;
-  segments?: TranscriptSegmentData[];
   hasMore?: boolean;
   isLoadingMore?: boolean;
   totalCount?: number;
   loadedCount?: number;
   onLoadMore?: () => void;
-
-  // Retranscription props
   meetingId?: string;
   meetingFolderPath?: string | null;
   onRefetchTranscripts?: () => Promise<void>;
 }
 
-export function TranscriptPanel({
-  transcripts,
-  customPrompt,
-  onPromptChange,
-  onCopyTranscript,
-  onOpenMeetingFolder,
-  isRecording,
-  disableAutoScroll = false,
-  usePagination = false,
-  segments,
-  hasMore,
-  isLoadingMore,
-  totalCount,
-  loadedCount,
-  onLoadMore,
-  meetingId,
-  meetingFolderPath,
-  onRefetchTranscripts,
-}: TranscriptPanelProps) {
-  // Convert transcripts to segments if pagination is not used but we want virtualization
-  const convertedSegments = useMemo(() => {
-    if (usePagination && segments) {
-      return segments;
-    }
-    // Convert transcripts to segments for virtualization
-    return transcripts.map(t => ({
-      id: t.id,
-      timestamp: t.audio_start_time ?? 0,
-      endTime: t.audio_end_time,
-      text: t.text,
-      speaker: t.speaker,
-      confidence: t.confidence,
-    }));
-  }, [transcripts, usePagination, segments]);
+/** Expected time to transcribe this recording with the selected model. */
+function TranscribeEstimate({ meetingId }: { meetingId: string }) {
+  const { transcriptModelConfig: { model } } = useConfig();
+  const { isProcessing } = useRecordingState();
+  const estimate = useTranscriptionEstimate();
+  const [duration, setDuration] = useState<number | null>(null);
+  useEffect(() => {
+    let open = true;
+    invoke<number>('get_meeting_audio_duration', { meetingId })
+      .then(value => { if (open) setDuration(value); }).catch(() => {});
+    return () => { open = false; };
+  }, [meetingId]);
+  if (!duration || isProcessing) return null;
+  return <p className="mt-2 text-xs text-gray-500">
+    {formatClock(duration)} recording · {modelLabel(model)} transcribes it in {formatEstimate(estimate(model, duration))}
+  </p>;
+}
 
+export function TranscriptPanel({
+  segments, customPrompt, onPromptChange, onCopyTranscript, onOpenMeetingFolder,
+  hasMore, isLoadingMore, totalCount, loadedCount, onLoadMore, meetingId, meetingFolderPath, onRefetchTranscripts,
+}: TranscriptPanelProps) {
   return (
-    <div className="flex w-full md:w-1/4 lg:w-1/3 min-w-0 border-r border-gray-200 bg-white flex-col relative shrink-0">
-      {/* Title area */}
+    <div className="flex w-full md:w-80 lg:w-96 min-w-0 border-r border-gray-200 bg-white flex-col relative shrink-0">
       <div className="p-4 border-b border-gray-200">
         <TranscriptButtonGroup
-          transcriptCount={usePagination ? (totalCount ?? convertedSegments.length) : (transcripts?.length || 0)}
+          transcriptCount={totalCount ?? segments.length}
           onCopyTranscript={onCopyTranscript}
           onOpenMeetingFolder={onOpenMeetingFolder}
           meetingId={meetingId}
           meetingFolderPath={meetingFolderPath}
           onRefetchTranscripts={onRefetchTranscripts}
         />
-        {meetingId && convertedSegments.length > 0 && <SpeakerNames meetingId={meetingId}
-          revision={convertedSegments[0]?.id ?? ''} onChanged={onRefetchTranscripts} />}
+        {meetingId && meetingFolderPath && <TranscribeEstimate meetingId={meetingId} />}
+        {meetingId && segments.length > 0 && <SpeakerNames meetingId={meetingId}
+          revision={segments[0]?.id ?? ''} onChanged={onRefetchTranscripts} />}
         {meetingId && meetingFolderPath && <RecordingPlayer key={meetingId} meetingId={meetingId} />}
       </div>
 
-      {/* Transcript content - use virtualized view for better performance */}
       <div className="flex-1 overflow-hidden pb-4">
-        {convertedSegments.length === 0 && <p className="p-4 text-sm text-gray-600">Your audio recording is saved. Click Transcribe when you want a local transcript and speaker labels.</p>}
-        {convertedSegments.length > 0 && <VirtualizedTranscriptView
-          segments={convertedSegments}
-          isRecording={isRecording}
-          isPaused={false}
-          isProcessing={false}
-          isStopping={false}
-          enableStreaming={false}
-          showConfidence={true}
-          disableAutoScroll={disableAutoScroll}
-          hasMore={hasMore}
-          isLoadingMore={isLoadingMore}
-          totalCount={totalCount}
-          loadedCount={loadedCount}
-          onLoadMore={onLoadMore}
-        />}
+        {segments.length === 0
+          ? <p className="p-4 text-sm text-gray-600">Your audio recording is saved. Click Transcribe when you want a local transcript and speaker labels.</p>
+          : <VirtualizedTranscriptView segments={segments} hasMore={hasMore} isLoadingMore={isLoadingMore}
+            totalCount={totalCount} loadedCount={loadedCount} onLoadMore={onLoadMore} />}
       </div>
 
-      {/* Custom prompt input at bottom of transcript section */}
-      {!isRecording && convertedSegments.length > 0 && (
+      {segments.length > 0 && (
         <div className="p-1 border-t border-gray-200">
           <textarea
             placeholder="Add context for AI summary. For example people involved, meeting overview, objective etc..."

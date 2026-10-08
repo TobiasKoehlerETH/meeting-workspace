@@ -8,12 +8,6 @@ import { configService, ModelConfig } from '@/services/configService';
 import { invoke } from '@tauri-apps/api/core';
 import { BetaFeatures, BetaFeatureKey, loadBetaFeatures, saveBetaFeatures } from '@/types/betaFeatures';
 
-export interface StorageLocations {
-  database: string;
-  models: string;
-  recordings: string;
-}
-
 export interface NotificationSettings {
   recording_notifications: boolean;
   time_based_reminders: boolean;
@@ -54,8 +48,6 @@ interface ConfigContextType {
   setSelectedLanguage: (lang: string) => void;
 
   // UI preferences
-  showConfidenceIndicator: boolean;
-  toggleConfidenceIndicator: (checked: boolean) => void;
 
   // Beta features
   betaFeatures: BetaFeatures;
@@ -67,8 +59,6 @@ interface ConfigContextType {
 
   // Preference settings (lazy loaded)
   notificationSettings: NotificationSettings | null;
-  storageLocations: StorageLocations | null;
-  isLoadingPreferences: boolean;
   loadPreferences: () => Promise<void>;
   updateNotificationSettings: (settings: NotificationSettings) => Promise<void>;
 }
@@ -108,15 +98,6 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     return 'auto';
   });
 
-  // UI preferences state
-  const [showConfidenceIndicator, setShowConfidenceIndicator] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('showConfidenceIndicator');
-      return saved !== null ? saved === 'true' : true;
-    }
-    return true;
-  });
-
   // Summary configs
   const [isAutoSummary, setisAutoSummary] = useState<boolean>(() => {
     if (typeof window !== 'undefined') {
@@ -133,10 +114,6 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
 
   // Preference settings state (lazy loaded)
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings | null>(null);
-  const [storageLocations, setStorageLocations] = useState<StorageLocations | null>(null);
-  const [isLoadingPreferences, setIsLoadingPreferences] = useState(false);
-  const preferencesLoadedRef = useRef(false);
-  const isLoadingRef = useRef(false);
 
   // Load transcript configuration on mount
   useEffect(() => {
@@ -280,15 +257,6 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     loadDevicePreferences();
   }, []);
 
-  // Toggle confidence indicator with localStorage persistence
-  const toggleConfidenceIndicator = useCallback((checked: boolean) => {
-    setShowConfidenceIndicator(checked);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('showConfidenceIndicator', checked.toString());
-    }
-    // Trigger a custom event to notify other components
-    window.dispatchEvent(new CustomEvent('confidenceIndicatorChanged', { detail: checked }));
-  }, []);
 
   const toggleIsAutoSummary = useCallback((checked: boolean) => {
     setisAutoSummary(checked);
@@ -308,53 +276,16 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     });
   }, []);
 
-  // Lazy load preference settings (only loads if not already cached)
-  const loadPreferences = useCallback(async () => {
-    // If already loaded, don't reload
-    if (preferencesLoadedRef.current) {
-      return;
-    }
-
-    // If currently loading, don't start another load
-    if (isLoadingRef.current) {
-      return;
-    }
-
-    isLoadingRef.current = true;
-    setIsLoadingPreferences(true);
-    try {
-      // Load notification settings from backend
-      let settings: NotificationSettings | null = null;
-      try {
-        settings = await invoke<NotificationSettings>('get_notification_settings');
-        setNotificationSettings(settings);
-      } catch (notifError) {
-        console.error('[ConfigContext] Failed to load notification settings:', notifError);
-        // Use default values if notification settings fail to load
-        setNotificationSettings(null);
-      }
-
-      // Load storage locations
-      const [dbDir, modelsDir, recordingsDir] = await Promise.all([
-        invoke<string>('get_database_directory'),
-        invoke<string>('whisper_get_models_directory'),
-        invoke<string>('get_default_recordings_folder_path')
-      ]);
-
-      setStorageLocations({
-        database: dbDir,
-        models: modelsDir,
-        recordings: recordingsDir
+  // Notification settings load once, when Settings first opens.
+  const preferencesRequest = useRef<Promise<void> | null>(null);
+  const loadPreferences = useCallback(() => {
+    preferencesRequest.current ??= invoke<NotificationSettings>('get_notification_settings')
+      .then(setNotificationSettings)
+      .catch(error => {
+        console.error('[ConfigContext] Failed to load notification settings:', error);
+        preferencesRequest.current = null;
       });
-
-      // Mark as loaded
-      preferencesLoadedRef.current = true;
-    } catch (error) {
-      console.error('[ConfigContext] Failed to load preferences:', error);
-    } finally {
-      isLoadingRef.current = false;
-      setIsLoadingPreferences(false);
-    }
+    return preferencesRequest.current;
   }, []);
 
   // Update notification settings
@@ -392,13 +323,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     devicesLoaded,
     selectedLanguage,
     setSelectedLanguage: handleSetSelectedLanguage,
-    showConfidenceIndicator,
-    toggleConfidenceIndicator,
     betaFeatures,
     toggleBetaFeature,
     notificationSettings,
-    storageLocations,
-    isLoadingPreferences,
     loadPreferences,
     updateNotificationSettings,
   }), [
@@ -410,13 +337,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     devicesLoaded,
     selectedLanguage,
     handleSetSelectedLanguage,
-    showConfidenceIndicator,
-    toggleConfidenceIndicator,
     betaFeatures,
     toggleBetaFeature,
     notificationSettings,
-    storageLocations,
-    isLoadingPreferences,
     loadPreferences,
     updateNotificationSettings,
   ]);

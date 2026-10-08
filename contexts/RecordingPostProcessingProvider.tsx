@@ -1,65 +1,51 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect } from 'react';
 import { listen } from '@tauri-apps/api/event';
+import { appDataDir } from '@tauri-apps/api/path';
+import { recordingService } from '@/services/recordingService';
 import { useRecordingStop } from '@/hooks/useRecordingStop';
 import { TranscriptProgressBar } from '@/components/TranscriptProgressBar';
 
-const ignoreLocalState = () => {};
+const StopRecordingContext = createContext<() => Promise<void>>(async () => {});
+
+/** Stop capture and save the meeting; shared by the main view and the mini recorder. */
+export const useStopRecording = () => useContext(StopRecordingContext);
 
 /**
- * RecordingPostProcessingProvider
- *
- * This provider handles post-processing when recording stops from any source:
- * - Tray menu stop
- * - Global keyboard shortcut
- * - Overlay stop button
- * - Main UI stop button
- *
- * It listens for the 'recording-stop-complete' event from Rust backend
- * and triggers the full post-processing flow (save to database, navigate, analytics)
- * regardless of which page the user is currently on.
+ * Saves a stopped recording as a meeting, whichever control stopped it:
+ * the tray emits 'recording-stop-complete', in-app controls call useStopRecording().
  */
 export function RecordingPostProcessingProvider({ children }: { children: React.ReactNode }) {
-  // No-op functions since the global RecordingStateContext already handles state updates
-  // These are only needed for the hook's local component state management
-
-  const {
-    handleRecordingStop,
-  } = useRecordingStop(ignoreLocalState, ignoreLocalState);
+  const { handleRecordingStop } = useRecordingStop();
 
   useEffect(() => {
-    let unlistenFn: (() => void) | undefined;
-    let closed = false;
-
-    const setupListener = async () => {
-      try {
-        // Listen for recording-stop-complete event from Rust
-        unlistenFn = await listen<boolean>('recording-stop-complete', (event) => {
-          console.log('[RecordingPostProcessing] Received recording-stop-complete event:', event.payload);
-
-          // Call the post-processing handler
-          // event.payload is the callApi boolean (true for normal stops)
-          handleRecordingStop(event.payload);
-        });
-        if (closed) unlistenFn();
-
-        console.log('[RecordingPostProcessing] Event listener set up successfully');
-      } catch (error) {
-        console.error('[RecordingPostProcessing] Failed to set up event listener:', error);
-      }
-    };
-
-    setupListener();
-
-    return () => {
-      closed = true;
-      if (unlistenFn) {
-        console.log('[RecordingPostProcessing] Cleaning up event listener');
-        unlistenFn();
-      }
-    };
+    const unlisten = listen<boolean>('recording-stop-complete', event => void handleRecordingStop(event.payload));
+    return () => void unlisten.then(fn => fn());
   }, [handleRecordingStop]);
 
-  return <>{children}<TranscriptProgressBar /></>;
+  const stopRecording = useCallback(async () => {
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    // 'recording-stopped' carries the folder path; saving must wait for it.
+    let unlisten: (() => void) | undefined;
+    const stopped = new Promise<void>(resolve => {
+      void listen('recording-stopped', () => resolve()).then(fn => { unlisten = fn; });
+      setTimeout(resolve, 5000);
+    });
+    try {
+      await recordingService.stopRecording(`${await appDataDir()}/recording-${timestamp}.wav`);
+      await stopped;
+    } catch (error) {
+      if (String(error).includes('No recording in progress')) return;
+      await handleRecordingStop(false);
+      throw error;
+    } finally {
+      unlisten?.();
+    }
+    await handleRecordingStop(true);
+  }, [handleRecordingStop]);
+
+  return <StopRecordingContext.Provider value={stopRecording}>
+    {children}<TranscriptProgressBar />
+  </StopRecordingContext.Provider>;
 }

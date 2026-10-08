@@ -537,6 +537,8 @@ pub fn run() {
             get_transcription_status,
             read_audio_file,
             audio::local_transcript::get_meeting_audio_path,
+            audio::local_transcript::get_meeting_audio_duration,
+            audio::local_transcript::get_transcription_hardware,
             save_transcript,
             whisper_engine::commands::whisper_init,
             whisper_engine::commands::whisper_get_available_models,
