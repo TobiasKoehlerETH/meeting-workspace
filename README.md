@@ -73,7 +73,7 @@ Use the tray menu to start, pause, resume, or stop recording, and **Open Main Wi
 to review transcripts and summaries. Those controls still show recording status.
 Operating-system microphone indicators and process listings remain visible; this
 mode does not make recording invisible. Use `--show` to override both saved launch
-preferences for a new session. If the app is already running, `--show` opens its window.
+preferences for a new session. If the app is already running, launching it again (for example double-clicking the .exe) opens its window.
 Tray recording waits for your saved audio-device choices to load. If a device
 cannot start, the tray controls recover so you can retry or open Settings.
 

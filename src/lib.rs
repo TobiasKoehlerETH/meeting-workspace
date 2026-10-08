@@ -385,7 +385,9 @@ pub fn run() {
                 cwd
             );
 
-            if !startup::should_start_minimized(&args, startup::is_stealth(app), app.tray_by_id("main-tray").is_some()) {
+            // Launching the app again is a deliberate request to see it, even in a discreet session.
+            // Only an explicit --minimized or --stealth on the new launch keeps the window hidden.
+            if !startup::should_start_minimized(&args, false, app.tray_by_id("main-tray").is_some()) {
                 tray::focus_main_window(app);
             }
         }));
