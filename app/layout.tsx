@@ -2,6 +2,7 @@
 
 import './globals.css'
 import './ap-style.css'
+import dynamic from 'next/dynamic'
 import Sidebar from '@/components/Sidebar'
 import { SidebarProvider } from '@/components/Sidebar/SidebarProvider'
 import MainContent from '@/components/MainContent'
@@ -17,16 +18,19 @@ import { OllamaDownloadProvider } from '@/contexts/OllamaDownloadContext'
 import { TranscriptProvider } from '@/contexts/TranscriptContext'
 import { ConfigProvider, useConfig } from '@/contexts/ConfigContext'
 import { OnboardingProvider } from '@/contexts/OnboardingContext'
-import { OnboardingFlow } from '@/components/onboarding'
 import { loadBetaFeatures } from '@/types/betaFeatures'
 import { DownloadProgressToastProvider } from '@/components/shared/DownloadProgressToast'
 import { RecordingPostProcessingProvider } from '@/contexts/RecordingPostProcessingProvider'
-import { ImportAudioDialog, ImportDropOverlay } from '@/components/ImportAudio'
+import { ImportDropOverlay } from '@/components/ImportAudio/ImportDropOverlay'
 import { ImportDialogProvider } from '@/contexts/ImportDialogContext'
 import { MiniRecorderProvider, useMiniRecorder } from '@/contexts/MiniRecorderContext'
 import { MiniRecorder } from '@/components/Recorder'
 import { isAudioExtension, getAudioFormatsDisplayList } from '@/constants/audioFormats'
 
+const OnboardingFlow = dynamic(() => import('@/components/onboarding/OnboardingFlow').then(module => module.OnboardingFlow), {
+  loading: () => <p className="p-8" role="status">Loading setup…</p>,
+});
+const ImportAudioDialog = dynamic(() => import('@/components/ImportAudio/ImportAudioDialog').then(module => module.ImportAudioDialog));
 
 
 // Module-level component — stable reference across RootLayout re-renders.
@@ -44,7 +48,7 @@ function ConditionalImportDialog({
   const { betaFeatures } = useConfig();
 
   // Only mount ImportAudioDialog (and its hooks/listeners) when feature is enabled
-  if (!betaFeatures.importAndRetranscribe) {
+  if (!betaFeatures.importAndRetranscribe || !showImportDialog) {
     return null;
   }
 

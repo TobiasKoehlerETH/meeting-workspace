@@ -4,6 +4,12 @@ Recording saves audio only. Local processing starts when the user selects a save
 
 ## Recording
 
+The recorder loads settings, setup, and audio-import dialogs on demand. Transcript search waits
+250 ms after typing and ignores responses from superseded or cleared queries. Title matching
+remains immediate; search snippets use a lookup map rather than scanning all results for every row.
+Offscreen meeting rows defer rendering through CSS content visibility, with normal rendering as
+the fallback in older webviews. Reduced-motion preferences disable interface animations.
+
 Capture mixes microphone and system audio directly into a lossless WAV writer.
 It does not load a speech model, run voice detection, create live transcript events, or animate incoming text.
 The mixer drains queued audio and its final partial window at Stop. Audio remains available after inference failures.

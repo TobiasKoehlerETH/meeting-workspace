@@ -24,7 +24,7 @@ interface SidebarContextType {
   expandSidebar: () => void;
   meetings: CurrentMeeting[];
   setMeetings: (meetings: CurrentMeeting[]) => void;
-  searchTranscripts: (query: string) => Promise<void>;
+  searchTranscripts: (query: string) => void;
   searchResults: TranscriptSearchResult[];
   isSearching: boolean;
   startSummaryPolling: (meetingId: string, processId: string, onUpdate: (result: any) => void) => void;
@@ -52,6 +52,8 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [meetings, setMeetings] = useState<CurrentMeeting[]>([]);
   const [searchResults, setSearchResults] = useState<TranscriptSearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const searchTimer = useRef<ReturnType<typeof setTimeout>>();
+  const searchVersion = useRef(0);
   // Timers live in a ref: starting or stopping a poll must not re-render the app.
   const polls = useRef(new Map<string, ReturnType<typeof setInterval>>());
 
@@ -68,17 +70,30 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => { void refetchMeetings(); }, [refetchMeetings]);
   useEffect(() => { if (pathname === '/') setCurrentMeeting(HOME_MEETING); }, [pathname]);
 
-  const searchTranscripts = useCallback(async (query: string) => {
-    if (!query.trim()) { setSearchResults([]); return; }
-    setIsSearching(true);
-    try {
-      setSearchResults(await invoke<TranscriptSearchResult[]>('api_search_transcripts', { query }));
-    } catch (error) {
-      console.error('Error searching transcripts:', error);
-      setSearchResults([]);
-    } finally {
-      setIsSearching(false);
-    }
+  const searchTranscripts = useCallback((query: string) => {
+    clearTimeout(searchTimer.current);
+    const version = ++searchVersion.current;
+    const text = query.trim();
+    setSearchResults([]);
+    setIsSearching(Boolean(text));
+    if (!text) return;
+
+    // Invalidate immediately so a previous request cannot win during the debounce.
+    searchTimer.current = setTimeout(async () => {
+      try {
+        const results = await invoke<TranscriptSearchResult[]>('api_search_transcripts', { query: text });
+        if (version === searchVersion.current) setSearchResults(results);
+      } catch (error) {
+        if (version === searchVersion.current) console.error('Error searching transcripts:', error);
+      } finally {
+        if (version === searchVersion.current) setIsSearching(false);
+      }
+    }, 250);
+  }, []);
+
+  useEffect(() => () => {
+    clearTimeout(searchTimer.current);
+    searchVersion.current++;
   }, []);
 
   const stopSummaryPolling = useCallback((meetingId: string) => {

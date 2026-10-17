@@ -38,8 +38,12 @@ pnpm tauri dev
 
 See [BUILD-WINDOWS.md](BUILD-WINDOWS.md) for native builds and [PERFORMANCE.md](PERFORMANCE.md) for processing details.
 
-The interface follows the A+P workshop style. Automatic updates and usage telemetry are removed.
+The interface uses a red-and-white theme with no company logo. Automatic updates and usage telemetry are removed.
 Recording controls remain available in the tray menu, the main window, and the mini view.
+
+Application and installer icons are plain gray tiles without a logo. To regenerate all platform sizes, run
+`pnpm tauri icon public/app-icon.svg`, then copy `src-tauri/icons/icon.png` to `public/app-icon.png`
+and `src-tauri/icons/icon.ico` to both `public/app-icon.ico` and `app/favicon.ico`.
 
 ## Local speaker detection
 

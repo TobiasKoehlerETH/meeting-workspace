@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { File, Home, NotebookPen, PanelLeft, Pencil, SearchIcon, Settings, Trash2, Upload, X } from 'lucide-react';
 import { usePathname, useRouter } from 'next/navigation';
 import { invoke } from '@tauri-apps/api/core';
@@ -9,13 +10,15 @@ import { useSidebar, type CurrentMeeting } from './SidebarProvider';
 import { ConfirmationModal } from '../ConfirmationModel/confirmation-modal';
 import { useImportDialog } from '@/contexts/ImportDialogContext';
 import { useConfig } from '@/contexts/ConfigContext';
-import { SettingsPanel } from '@/components/SettingsPanel';
 import { Dialog, DialogContent, DialogFooter, DialogTitle } from '@/components/ui/dialog';
 import { VisuallyHidden } from '@/components/ui/visually-hidden';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '../ui/input-group';
 import type { SettingsTab } from '@/lib/utils';
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
+const SettingsPanel = dynamic(() => import('@/components/SettingsPanel').then(module => module.SettingsPanel), {
+  loading: () => <p className="p-8 text-sm text-gray-500" role="status">Loading settings…</p>,
+});
 
 export default function Sidebar() {
   const router = useRouter();
@@ -39,13 +42,14 @@ export default function Sidebar() {
     return () => { delete target.openSettings; };
   }, []);
 
+  const searchById = useMemo(() => new Map(searchResults.map(result => [result.id, result])), [searchResults]);
+
   // A meeting matches by title or by a transcript search hit.
   const visibleMeetings = useMemo(() => {
     const text = query.trim().toLowerCase();
     if (!text) return meetings;
-    const hits = new Set(searchResults.map(result => result.id));
-    return meetings.filter(meeting => hits.has(meeting.id) || meeting.title.toLowerCase().includes(text));
-  }, [meetings, query, searchResults]);
+    return meetings.filter(meeting => searchById.has(meeting.id) || meeting.title.toLowerCase().includes(text));
+  }, [meetings, query, searchById]);
 
   function search(value: string) {
     setQuery(value);
@@ -81,13 +85,13 @@ export default function Sidebar() {
 
   const meetingRow = (meeting: CurrentMeeting) => {
     const active = pathname?.includes('/meeting-details') && currentMeeting?.id === meeting.id;
-    const snippet = query.trim() && searchResults.find(result => result.id === meeting.id)?.matchContext;
-    return <li key={meeting.id}>
+    const snippet = query.trim() && searchById.get(meeting.id)?.matchContext;
+    return <li key={meeting.id} className="meeting-row">
       <div className={`group flex min-w-0 items-center rounded-md ${active ? 'bg-gray-100' : 'hover:bg-gray-50'}`}>
         <button type="button" aria-current={active ? 'page' : undefined} className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-sm"
           onClick={() => { setCurrentMeeting(meeting); router.push('/meeting-details?id=' + encodeURIComponent(meeting.id)); }}>
           <File className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
-          <span className="min-w-0 flex-1 break-words">{meeting.title}</span>
+          <span className="min-w-0 flex-1 truncate" title={meeting.title}>{meeting.title}</span>
         </button>
         <div className="flex shrink-0 gap-1 pr-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
           <button type="button" aria-label="Edit meeting title" title={'Rename ' + meeting.title} onClick={() => setRenaming(meeting)} className="rounded p-1 hover:bg-gray-100"><Pencil className="h-4 w-4" aria-hidden="true" /></button>
@@ -133,7 +137,8 @@ export default function Sidebar() {
             <ul id="meeting-list" className="space-y-1 pb-4">
               {isSearching && <li className="px-2 text-xs text-gray-500" role="status">Searching...</li>}
               {visibleMeetings.map(meetingRow)}
-              {meetings.length === 0 && <li className="px-2 py-3 text-sm text-gray-500">No saved meetings.</li>}
+              {meetings.length === 0 && <li className="px-2 py-3 text-sm text-gray-500">Your saved meetings will appear here.</li>}
+              {meetings.length > 0 && !isSearching && query.trim() && visibleMeetings.length === 0 && <li className="px-2 py-3 text-sm text-gray-500" role="status">No matching meetings. Try another word or clear the search.</li>}
             </ul>
           </details>}
       </div>
