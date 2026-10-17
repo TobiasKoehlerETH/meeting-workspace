@@ -20,8 +20,8 @@ export function LanguageSelection({ selectedLanguage, onLanguageChange, disabled
       <select id="speech-language" value={selected} onChange={event => onLanguageChange(event.target.value)} disabled={disabled || isParakeet} className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm disabled:opacity-50">
         {options.map(language => <option key={language.code} value={language.code}>{language.name}</option>)}
       </select>
-      {isParakeet && <p className="text-xs text-gray-600">Parakeet detects the language automatically. Use Whisper to select a language.</p>}
-      {selected === 'gsw' && <p className="text-xs text-gray-600">Swiss German speech → Standard German text. Whisper is recommended.</p>}
+      {isParakeet && <p className="text-xs text-gray-600">Detected automatically by Parakeet.</p>}
+      {selected === 'gsw' && <p className="text-xs text-gray-600">Swiss German &rarr; Standard German text.</p>}
     </div>
   );
 }

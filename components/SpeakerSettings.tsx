@@ -35,7 +35,6 @@ export function SpeakerSettings({ disabled = false }: { disabled?: boolean }) {
       <Switch id="speaker-detection" checked={settings.enabled} disabled={disabled || busy}
         onCheckedChange={enabled => void save({ ...settings, enabled })} />
     </div>
-    <p className="text-sm text-gray-600">When you click Transcribe, group voices locally as Speaker 1, Speaker 2, and so on. Rename speakers in the transcript. Labels can be wrong, especially when people talk over each other.</p>
     <Label htmlFor="speaker-count">Number of speakers</Label>
     <Input id="speaker-count" type="number" min={0} max={20} step={1} value={count}
       disabled={disabled || busy || !settings.enabled} aria-describedby="speaker-count-help"
@@ -46,7 +45,7 @@ export function SpeakerSettings({ disabled = false }: { disabled?: boolean }) {
         }
         if (value !== settings.speaker_count) void save({ ...settings, speaker_count: value });
       }} />
-    <p id="speaker-count-help" className="text-xs text-gray-500">0 estimates automatically. A known count can improve grouping. Applies to new and retranscribed meetings; retranscribing resets speaker names.</p>
+    <p id="speaker-count-help" className="text-xs text-gray-500">0 = Auto. Transcribing again resets speaker names.</p>
     {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
   </div>;
 }

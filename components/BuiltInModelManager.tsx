@@ -269,7 +269,7 @@ export function BuiltInModelManager({
     return (
       <Alert>
         <AlertDescription>
-          No models found. Download a model to get started with Built-in AI.
+          No models found.
         </AlertDescription>
       </Alert>
     );
@@ -277,10 +277,6 @@ export function BuiltInModelManager({
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-4">
-        <h4 className="text-sm font-bold">Built-in AI Models</h4>
-      </div>
-
       <div
         className={cn(
           'grid gap-4',
@@ -447,7 +443,7 @@ export function BuiltInModelManager({
                   </p>
                 )}
                 <div className="text-xs text-gray-500">
-                  <span>{formatSummaryModelSizeLabelFromMb(model.size_mb)} • {model.context_size} tokens</span>
+                  <span>{formatSummaryModelSizeLabelFromMb(model.size_mb)}</span>
                 </div>
                 </div>
               </div>

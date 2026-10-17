@@ -23,7 +23,7 @@ export function SummaryLengthSettings() {
         }
       }} />
     <p id="summary-lines-help" className="text-sm text-gray-600">
-      {valid ? 'Use 1–50 bullet lines. The model may use fewer when there are fewer facts. Text wrapping does not count as another line. Applies to new and regenerated summaries.' : 'Enter a whole number from 1 to 50. The last valid setting is still saved.'}
+      {valid ? '1–50 bullets, as needed.' : 'Enter a whole number from 1 to 50.'}
     </p>
   </div>;
 }

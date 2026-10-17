@@ -43,7 +43,7 @@ function TranscribeEstimate({ meetingId }: { meetingId: string }) {
   }, [meetingId]);
   if (!duration || isProcessing) return null;
   return <p className="mt-2 text-xs text-gray-500">
-    {formatClock(duration)} recording · {modelLabel(model)} transcribes it in {formatEstimate(estimate(model, duration))}
+    {formatClock(duration)} audio &middot; {modelLabel(model)} &rarr; {formatEstimate(estimate(model, duration))}
   </p>;
 }
 
@@ -70,7 +70,7 @@ export function TranscriptPanel({
 
       <div className="flex-1 overflow-hidden pb-4">
         {segments.length === 0
-          ? <p className="p-4 text-sm text-gray-600">Your audio recording is saved. Click Transcribe when you want a local transcript and speaker labels.</p>
+          ? <p className="p-4 text-sm text-gray-600">Audio saved. Select Transcribe to create a transcript.</p>
           : <VirtualizedTranscriptView segments={segments} hasMore={hasMore} isLoadingMore={isLoadingMore}
             totalCount={totalCount} loadedCount={loadedCount} onLoadMore={onLoadMore} />}
       </div>
@@ -78,7 +78,8 @@ export function TranscriptPanel({
       {segments.length > 0 && (
         <div className="p-1 border-t border-gray-200">
           <textarea
-            placeholder="Add context for AI summary. For example people involved, meeting overview, objective etc..."
+            aria-label="Summary context"
+            placeholder="Summary context (optional)"
             className="w-full px-3 py-2 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-1 focus:ring-blue-500 focus:border-blue-500 bg-white shadow-sm min-h-[80px] resize-y"
             value={customPrompt}
             onChange={(e) => onPromptChange(e.target.value)}

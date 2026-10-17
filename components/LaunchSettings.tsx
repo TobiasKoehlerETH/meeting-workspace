@@ -7,9 +7,9 @@ import { Switch } from './ui/switch';
 export function LaunchSettings() {
   return <div className="space-y-4">
     <LaunchPreference name="start_minimized" title="Start minimized"
-      description="Open in the system tray on the next launch. Use Open Main Window to return. Recording starts only when you choose Start Recording." />
-    <LaunchPreference name="stealth_mode" title="Discreet launch (stealth mode)"
-      description="On the next launch, keep the window hidden, silence app notifications, and use a neutral tray tooltip. Start, pause, and stop from the tray without opening the window. The tray menu and main window still show recording controls. Operating-system microphone indicators remain visible. Recording does not start automatically." />
+      description="Open in the tray. Use Open Main Window to return." />
+    <LaunchPreference name="stealth_mode" title="Discreet launch"
+      description="Open in the tray with notifications off. Start recording manually. System microphone indicators remain visible." />
   </div>;
 }
 

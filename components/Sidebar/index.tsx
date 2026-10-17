@@ -137,8 +137,8 @@ export default function Sidebar() {
             <ul id="meeting-list" className="space-y-1 pb-4">
               {isSearching && <li className="px-2 text-xs text-gray-500" role="status">Searching...</li>}
               {visibleMeetings.map(meetingRow)}
-              {meetings.length === 0 && <li className="px-2 py-3 text-sm text-gray-500">Your saved meetings will appear here.</li>}
-              {meetings.length > 0 && !isSearching && query.trim() && visibleMeetings.length === 0 && <li className="px-2 py-3 text-sm text-gray-500" role="status">No matching meetings. Try another word or clear the search.</li>}
+              {meetings.length === 0 && <li className="px-2 py-3 text-sm text-gray-500">No meetings yet.</li>}
+              {meetings.length > 0 && !isSearching && query.trim() && visibleMeetings.length === 0 && <li className="px-2 py-3 text-sm text-gray-500" role="status">No matches.</li>}
             </ul>
           </details>}
       </div>

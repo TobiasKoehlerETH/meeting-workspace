@@ -98,16 +98,8 @@ export function PermissionWarning({
             {!hasMicrophone && (
               <>
                 <p className="mb-3">
-                  Meeting Workspace needs access to your microphone to record meetings. No microphone devices were detected.
+                  No microphone found. Connect one and allow microphone access in System Settings.
                 </p>
-                <div className="space-y-2 text-sm mb-4">
-                  <p className="font-medium">Please check:</p>
-                  <ul className="list-disc list-inside ml-2 space-y-1">
-                    <li>Your microphone is connected and powered on</li>
-                    <li>Microphone permission is granted in System Settings</li>
-                    <li>No other app is exclusively using the microphone</li>
-                  </ul>
-                </div>
               </>
             )}
 
@@ -116,8 +108,8 @@ export function PermissionWarning({
               <>
                 <p className="mb-3">
                   {hasMicrophone
-                    ? 'System audio capture is not available. You can still record with your microphone, but computer audio won\'t be captured.'
-                    : 'System audio capture is also not available.'}
+                    ? 'System audio unavailable. Only the microphone will be recorded.'
+                    : 'System audio unavailable.'}
                 </p>
                 {isMacOS && (
                   <div className="space-y-2 text-sm mb-4">

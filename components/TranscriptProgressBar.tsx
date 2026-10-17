@@ -29,7 +29,6 @@ export function TranscriptProgressBar() {
           style={progress ? { width: `${progress.percentage}%` } : undefined} />
       </div>
       <p role="status" className="mt-2 text-sm text-gray-600">{message}</p>
-      {processing && <p className="mt-1 text-xs text-gray-500">Runs on this device. Progress follows processing stages, not time remaining.</p>}
     </section>
   </div>;
 }

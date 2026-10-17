@@ -23,7 +23,6 @@ export function TranscriptSettings({ onModelSelect }: { onModelSelect?: () => vo
         onModelSelect?.();
     };
     return <div className="space-y-4 pb-6">
-        <p className="text-sm text-gray-600">Recording saves audio only. Transcription runs on this device when you click Transcribe on a saved meeting. Times show how long one hour of audio takes; they adapt after your first transcription.</p>
         <div role="radiogroup" aria-label="Speech engine" className="inline-flex rounded border border-gray-300 p-0.5 text-sm">
             {([['localWhisper', 'Whisper · any language'], ['parakeet', 'Parakeet · fastest']] as const).map(([value, label]) =>
                 <button key={value} type="button" role="radio" aria-checked={provider === value} disabled={disabled}
@@ -31,7 +30,7 @@ export function TranscriptSettings({ onModelSelect }: { onModelSelect?: () => vo
                     className={`rounded px-3 py-1 ${provider === value ? 'bg-gray-900 text-white' : 'text-gray-700 hover:bg-gray-100'}`}>{label}</button>)}
         </div>
         {disabled
-            ? <p className="text-sm text-gray-600">Wait for recording and transcription to finish before changing models.</p>
+            ? <p className="text-sm text-gray-600">Models are locked while recording or transcribing.</p>
             : <SpeechModelManager key={provider} provider={provider} onSelect={selectModel}
                 selectedModel={transcriptModelConfig.provider === provider ? transcriptModelConfig.model : undefined} />}
         <LanguageSelection selectedLanguage={selectedLanguage} onLanguageChange={setSelectedLanguage} disabled={disabled} provider={provider} />

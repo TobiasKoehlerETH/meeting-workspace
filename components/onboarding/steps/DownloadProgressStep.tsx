@@ -359,7 +359,6 @@ export function DownloadProgressStep() {
     // Show toast if downloads still in progress
     if (!downloadsComplete) {
       toast.info('Downloads will continue in the background', {
-        description: 'You can start using the app. Recording will be available once speech recognition is ready.',
         duration: 5000,
       });
     }
@@ -473,8 +472,7 @@ export function DownloadProgressStep() {
 
   return (
     <OnboardingContainer
-      title="Getting things ready"
-      description="You can start using Meeting Workspace after downloading the Transcription Engine."
+      title="Download models"
       step={3}
       totalSteps={isMac ? 4 : 3}
     >
@@ -482,14 +480,14 @@ export function DownloadProgressStep() {
         {/* Download Cards */}
         <div className="w-full max-w-lg space-y-4">
           {renderDownloadCard(
-            'Transcription Engine',
+            'Speech model',
             <Mic className="w-5 h-5 text-gray-600" />,
             whisperState,
             '~3 GB'
           )}
 
           {renderDownloadCard(
-            'Summary Engine',
+            'Summary model',
             <Sparkles className="w-5 h-5 text-gray-600" />,
             summaryState,
             getSummaryModelSizeLabel(selectedSummaryModel || recommendedSummaryModel),
@@ -510,10 +508,7 @@ export function DownloadProgressStep() {
               <div className="flex items-start gap-3">
                 <Download className="w-5 h-5 text-gray-600 flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="font-medium">You can continue while this finishes</p>
-                  <p className="text-gray-700 mt-1">
-                    Download will continue in the background.
-                  </p>
+                  <p>Summary download continues in the background.</p>
                 </div>
               </div>
             </motion.div>

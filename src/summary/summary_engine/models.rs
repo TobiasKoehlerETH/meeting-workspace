@@ -174,7 +174,7 @@ pub fn get_available_models() -> Vec<ModelDef> {
             context_size: 32768,
             layer_count: 24,
             sampling: SamplingParams::qwen35_summary(vec!["<|im_end|>".to_string()]),
-            description: "Balanced Qwen 3.5 model for built-in summaries. Higher quality with modest local requirements.".to_string(),
+            description: "Balanced quality and memory use.".to_string(),
         },
         // Qwen 3.5 4B - High quality tier
         ModelDef {
@@ -187,7 +187,7 @@ pub fn get_available_models() -> Vec<ModelDef> {
             context_size: 32768,
             layer_count: 32,
             sampling: SamplingParams::qwen35_summary(vec!["<|im_end|>".to_string()]),
-            description: "High-quality Qwen 3.5 model for built-in summaries. Best local Qwen option in the current lineup.".to_string(),
+            description: "Higher quality; more memory.".to_string(),
         },
         // Gemma 3 4B - Legacy alternative retained for users who prefer Gemma output.
         ModelDef {
@@ -200,7 +200,7 @@ pub fn get_available_models() -> Vec<ModelDef> {
             context_size: 32768,
             layer_count: 35,
             sampling: SamplingParams::gemma3_instruct(vec!["<end_of_turn>".to_string()]),
-            description: "Balanced model. Great quality/speed trade-off. Requires ~3.5GB RAM.".to_string(),
+            description: "Balanced speed and quality. About 3.5 GB RAM.".to_string(),
         },
         // Gemma 3 1B - Visible legacy tier retained for already-shipped users.
         ModelDef {
@@ -213,7 +213,7 @@ pub fn get_available_models() -> Vec<ModelDef> {
             context_size: 32768,
             layer_count: 26,
             sampling: SamplingParams::gemma3_instruct(vec!["<end_of_turn>".to_string()]),
-            description: "Fastest model. Runs on any hardware with ~1GB RAM. Good for quick summaries.".to_string(),
+            description: "Fastest. About 1 GB RAM.".to_string(),
         },
     ]
 }

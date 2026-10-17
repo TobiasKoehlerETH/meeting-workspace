@@ -1,7 +1,7 @@
 "use client"
 
 import { Switch } from "./ui/switch"
-import { FlaskConical, AlertCircle } from "lucide-react"
+import { FlaskConical } from "lucide-react"
 import { useConfig } from "@/contexts/ConfigContext"
 import {
   BetaFeatureKey,
@@ -17,14 +17,6 @@ export function BetaSettings() {
 
   return (
     <div className="space-y-6">
-      {/* Yellow Warning Banner */}
-      <div className="flex items-start gap-3 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-        <AlertCircle className="h-5 w-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-        <div className="text-sm text-yellow-800">
-          <p>These features are in testing.</p>
-        </div>
-      </div>
-
       {/* Dynamic Feature Toggles - Automatically renders all features */}
       {featureOrder.map((featureKey) => (
         <div
@@ -58,12 +50,6 @@ export function BetaSettings() {
         </div>
       ))}
 
-      {/* Info Box */}
-      <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-        <p className="text-sm text-blue-800">
-          Disable a feature to hide its controls. Saved meetings do not change.
-        </p>
-      </div>
     </div>
   );
 }

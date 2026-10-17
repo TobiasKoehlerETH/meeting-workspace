@@ -24,8 +24,7 @@ export function PreferenceSettings() {
       <LaunchSettings />
       <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 p-6">
         <div>
-          <h3 className="mb-2">Notifications</h3>
-          <p className="text-sm text-gray-600">Notify when recording starts or stops.</p>
+          <h3>Recording notifications</h3>
         </div>
         <Switch aria-label="Recording notifications" checked={enabled} disabled={!preferences} onCheckedChange={toggle} />
       </div>

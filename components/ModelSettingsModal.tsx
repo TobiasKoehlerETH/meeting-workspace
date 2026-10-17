@@ -37,8 +37,7 @@ export function ModelSettingsModal({ modelConfig, setModelConfig, onSave, skipIn
     return () => { closed = true; };
   }, [skipInitialFetch, setModelConfig]);
   return <div className="space-y-4">
-    <p className="text-sm text-gray-600">Summaries run locally. Qwen 3.5 4B is the quality-first default. Download a model once, then use it offline.</p>
     <BuiltInModelManager selectedModel={modelConfig.model} layout={layout} onModelSelect={model => setModelConfig({ ...modelConfig, provider: 'builtin-ai', model, apiKey: null })} />
-    <Button onClick={() => onSave({ ...modelConfig, provider: 'builtin-ai', apiKey: null })}>Save local model</Button>
+    <Button onClick={() => onSave({ ...modelConfig, provider: 'builtin-ai', apiKey: null })}>Save</Button>
   </div>;
 }

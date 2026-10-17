@@ -57,22 +57,20 @@ export function Recorder() {
   if (!isRecording) {
     return <div className="recorder-page">
       <section className="recorder-card" aria-labelledby="recorder-title">
-      <p className="workspace-eyebrow">Your local meeting notebook</p>
-      <h1 id="recorder-title" className="text-3xl sm:text-4xl">Ready when you are</h1>
-      <p className="max-w-sm text-center text-sm leading-relaxed text-gray-600">Record your conversation, then turn it into a transcript and summary on this device.</p>
+      <h1 id="recorder-title" className="sr-only">Record a meeting</h1>
       <button type="button" aria-label="Start recording" disabled={busy}
         onClick={() => void run(handleRecordingStart, 'Recording could not start', explainStartError)}
         className={`${round} h-24 w-24 bg-red-600 text-white shadow-lg hover:bg-red-700`}>
         {pending || status === RecordingStatus.STARTING ? <span className="h-6 w-6 animate-spin rounded-full border-2 border-white border-b-transparent" /> : <Mic className="h-9 w-9" />}
       </button>
-      <p className="text-sm font-medium" role="status">{busy ? 'Preparing recorderâ€¦' : 'Start recording'}</p>
+      <p className="text-sm font-medium" role="status">{busy ? 'Preparing...' : 'Start recording'}</p>
       <div className="recorder-options">
         <button type="button" className="flex items-center gap-2 hover:text-black" onClick={() => openSettings('recording')}>
           <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />Audio devices
         </button>
         <button type="button" className="hover:text-black" onClick={() => openSettings('transcription')}
           title="Expected processing time for one hour of audio on this device">
-          {modelLabel(model)} Â· 1 h audio â†’ {formatEstimate(estimate(model, 3600))}
+          {modelLabel(model)} &middot; 1 h audio &rarr; {formatEstimate(estimate(model, 3600))}
         </button>
         <label className="flex items-center gap-2">
           <Switch checked={autoMini} onCheckedChange={setAutoMini} />Mini view while recording
@@ -81,7 +79,6 @@ export function Recorder() {
       {!isChecking && <PermissionWarning hasMicrophone={hasMicrophone} hasSystemAudio={hasSystemAudio}
         onRecheck={checkPermissions} isRechecking={isChecking} />}
       </section>
-      <p className="text-center text-xs text-gray-500">Audio stays on this device. Transcribe when you choose.</p>
     </div>;
   }
 
@@ -108,7 +105,7 @@ export function Recorder() {
         <Minimize2 className="h-5 w-5" />
       </button>
     </div>
-    <p className="max-w-md text-center text-sm leading-relaxed text-gray-500">Audio is saved when you stop. Transcribing it with {modelLabel(model)} takes {formatEstimate(estimate(model, activeDuration ?? 0))}.</p>
+    <p className="text-center text-sm text-gray-500">Transcription: {formatEstimate(estimate(model, activeDuration ?? 0))}</p>
     </section>
   </div>;
 }

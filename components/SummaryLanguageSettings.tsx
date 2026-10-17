@@ -22,8 +22,7 @@ export function SummaryLanguageSettings() {
         <h3 className="text-lg font-semibold text-gray-900">Summary Language</h3>
       </div>
       <p className="text-sm text-gray-600 mb-4">
-        Pin one language as the default for new meetings. Unpinned languages remain as
-        quick-switch options in the summary generator. Auto uses the dominant transcript language.
+        Pin a default. Auto follows the transcript language.
       </p>
 
       <div className="flex flex-wrap items-center gap-2">
@@ -74,7 +73,7 @@ export function SummaryLanguageSettings() {
               disabled={recents.length >= 5}
               className="inline-flex items-center gap-1 rounded-full border border-dashed border-gray-300 px-3 py-1 text-sm text-gray-600 hover:border-gray-400 hover:text-gray-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              ＋ Add language
+              Add language
             </button>
           </PopoverTrigger>
           <PopoverContent align="start" className="w-auto p-0 border-0 shadow-none bg-transparent">
@@ -91,11 +90,7 @@ export function SummaryLanguageSettings() {
         </Popover>
       </div>
 
-      <p className="text-xs text-gray-400 mt-3">
-        {pinned
-          ? `Default: ${labelForCode(pinned)} - click it again to unset. Max 5 quick-switch options.`
-          : 'Click any language to set it as your default. Max 5 quick-switch options.'}
-      </p>
+      {recents.length >= 5 && <p className="text-xs text-gray-500 mt-3">Remove a language to add another.</p>}
     </div>
   );
 }

@@ -115,8 +115,8 @@ impl Default for NotificationTimeout {
 impl Notification {
     pub fn recording_started(meeting_name: Option<String>) -> Self {
         let body = match meeting_name {
-            Some(name) => format!("Recording started for meeting: {}", name),
-            None => "Recording has started. Please inform others in the meeting that you are recording.".to_string(),
+            Some(name) => format!("Recording: {}", name),
+            None => "Recording started. Notify participants.".to_string(),
         };
 
         Notification::new("Meeting Workspace", body, NotificationType::RecordingStarted)
@@ -127,7 +127,7 @@ impl Notification {
     pub fn recording_stopped() -> Self {
         Notification::new(
             "Meeting Workspace",
-            "Recording has been stopped and saved",
+            "Recording saved",
             NotificationType::RecordingStopped
         )
         .with_priority(NotificationPriority::Normal)
@@ -137,7 +137,7 @@ impl Notification {
     pub fn recording_paused() -> Self {
         Notification::new(
             "Meeting Workspace",
-            "Recording has been paused",
+            "Recording paused",
             NotificationType::RecordingPaused
         )
         .with_priority(NotificationPriority::Normal)
@@ -147,7 +147,7 @@ impl Notification {
     pub fn recording_resumed() -> Self {
         Notification::new(
             "Meeting Workspace",
-            "Recording has been resumed",
+            "Recording resumed",
             NotificationType::RecordingResumed
         )
         .with_priority(NotificationPriority::Normal)
@@ -156,8 +156,8 @@ impl Notification {
 
     pub fn transcription_complete(file_path: Option<String>) -> Self {
         let body = match file_path {
-            Some(path) => format!("Transcription completed and saved to: {}", path),
-            None => "Transcription has been completed".to_string(),
+            Some(path) => format!("Transcript saved: {}", path),
+            None => "Transcript ready".to_string(),
         };
 
         Notification::new("Meeting Workspace", body, NotificationType::TranscriptionComplete)
@@ -190,7 +190,7 @@ impl Notification {
     pub fn test_notification() -> Self {
         Notification::new(
             "Meeting Workspace",
-            "This is a test notification to verify the system is working correctly",
+            "Notifications are working",
             NotificationType::Test
         )
         .with_priority(NotificationPriority::Normal)

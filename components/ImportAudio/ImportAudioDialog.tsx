@@ -16,7 +16,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -227,6 +226,7 @@ export function ImportAudioDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent
+        aria-describedby={undefined}
         className="sm:max-w-[500px]"
         onEscapeKeyDown={handleEscapeKeyDown}
         onInteractOutside={handleInteractOutside}
@@ -251,17 +251,10 @@ export function ImportAudioDialog({
             ) : (
               <>
                 <Upload className="h-5 w-5 text-blue-600" />
-                Import Audio File
+                Import audio
               </>
             )}
           </DialogTitle>
-          <DialogDescription>
-            {isProcessing
-              ? progress?.message || 'Processing audio...'
-              : error
-              ? 'An error occurred during import'
-              : 'Import an audio file to create a new meeting with transcripts'}
-          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -369,7 +362,7 @@ export function ImportAudioDialog({
                             <span className="text-sm font-medium">Language</span>
                           </div>
                           <p className="text-xs text-muted-foreground">
-                            Language selection isn't supported for Parakeet. It always uses automatic detection.
+                            Parakeet detects the language automatically.
                           </p>
                         </div>
                       )}

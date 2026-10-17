@@ -118,9 +118,9 @@ export function TranscriptRecovery({
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-4xl h-[80vh] flex flex-col p-0">
         <DialogHeader className="px-6 pt-6">
-          <DialogTitle className="text-2xl">Recover Interrupted Meetings</DialogTitle>
+          <DialogTitle className="text-2xl">Recover meetings</DialogTitle>
           <DialogDescription>
-            We found {recoverableMeetings.length} meeting{recoverableMeetings.length !== 1 ? 's' : ''} that {recoverableMeetings.length !== 1 ? 'were' : 'was'} interrupted. Select a meeting to preview and recover it.
+            Select a meeting to recover.
           </DialogDescription>
         </DialogHeader>
 
@@ -210,7 +210,7 @@ export function TranscriptRecovery({
                       <div className="space-y-3">
                         <Alert>
                           <AlertDescription>
-                            Showing first {previewTranscripts.length} transcript segments (of {selectedMeeting.transcriptCount} total)
+                            {previewTranscripts.length} of {selectedMeeting.transcriptCount} segments
                           </AlertDescription>
                         </Alert>
                         {previewTranscripts.map((transcript, index) => {

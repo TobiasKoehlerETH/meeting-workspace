@@ -57,13 +57,13 @@ export function RecordingSettings() {
     <section className="flex items-center justify-between gap-4 border-t pt-6">
       <div>
         <h3>Recording reminder</h3>
-        <p className="text-sm text-gray-600">Remind you to tell participants that the meeting is recorded.</p>
+        <p className="text-sm text-gray-600">Remind me to notify participants.</p>
       </div>
       <Switch aria-label="Recording reminder" checked={reminder} onCheckedChange={changeReminder} />
     </section>
     <section className="space-y-2 border-t pt-6">
       <h3>Saved recordings</h3>
-      <p className="break-all text-sm text-gray-600">{preferences.save_folder || 'Default folder'} · lossless WAV, kept for transcription and retries</p>
+      <p className="break-all text-sm text-gray-600">{preferences.save_folder || 'Default folder'}</p>
       <button type="button" onClick={() => void invoke('open_recordings_folder')}
         className="flex items-center gap-2 rounded border border-gray-300 px-3 py-1.5 text-sm hover:bg-gray-50">
         <FolderOpen className="h-4 w-4" aria-hidden="true" />Open folder

@@ -40,7 +40,7 @@ export function SpeakerNames({ meetingId, revision, onChanged }: {
   return <details className="mt-3 text-sm">
     <summary className="cursor-pointer font-medium">Speaker names</summary>
     <div className="mt-2 space-y-2">
-      <p className="text-xs text-gray-500">Names apply to this meeting. Regenerate the summary to use updated names.</p>
+      <p className="text-xs text-gray-500">Regenerate the summary to update names.</p>
       <select aria-label="Speaker to rename" className="w-full rounded border p-2" value={selected} disabled={busy}
         onChange={event => { setSelected(event.target.value); setName(event.target.value); }}>
         {speakers.map(speaker => <option key={speaker} value={speaker}>{speaker}</option>)}
