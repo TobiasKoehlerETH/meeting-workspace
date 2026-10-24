@@ -20,12 +20,10 @@ export function PreferenceSettings() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3">
       <LaunchSettings />
-      <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 p-6">
-        <div>
-          <h3>Recording notifications</h3>
-        </div>
+      <div className="flex items-center justify-between gap-4 rounded-lg border border-gray-200 p-4">
+        <h3>Recording notifications</h3>
         <Switch aria-label="Recording notifications" checked={enabled} disabled={!preferences} onCheckedChange={toggle} />
       </div>
     </div>

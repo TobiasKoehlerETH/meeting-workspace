@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode, useRef } from 'react';
+import { isSupportedLanguage } from '@/constants/languages';
 import { DEFAULT_WHISPER_MODEL } from '@/constants/models';
 import { TranscriptModelProps } from '@/components/TranscriptSettings';
 import { SelectedDevices } from '@/components/DeviceSelection';
@@ -92,8 +93,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
   // Language preference state
   const [selectedLanguage, setSelectedLanguage] = useState<string>(() => {
     if (typeof window !== 'undefined') {
+      // Languages dropped from the picker fall back to detection.
       const saved = localStorage.getItem('primaryLanguage');
-      return saved || 'auto';
+      return saved && isSupportedLanguage(saved) ? saved : 'auto';
     }
     return 'auto';
   });

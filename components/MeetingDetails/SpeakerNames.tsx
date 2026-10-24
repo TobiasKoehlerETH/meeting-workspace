@@ -38,7 +38,7 @@ export function SpeakerNames({ meetingId, revision, onChanged }: {
 
   if (!speakers.length && !error) return null;
   return <details className="mt-3 text-sm">
-    <summary className="cursor-pointer font-medium">Speaker names</summary>
+    <summary className="cursor-pointer font-medium">Speakers</summary>
     <div className="mt-2 space-y-2">
       <p className="text-xs text-gray-500">Regenerate the summary to update names.</p>
       <select aria-label="Speaker to rename" className="w-full rounded border p-2" value={selected} disabled={busy}

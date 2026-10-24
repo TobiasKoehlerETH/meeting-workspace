@@ -40,7 +40,7 @@ Removed the unused FFmpeg-style mixer and per-device recording channels; the act
 Removed the unused text post-processor, asynchronous logger, metrics batcher, and buffer pool. Recording state no longer allocates the unused pool. Startup no longer reads unused cloud-provider credentials or fetches an unused Ollama model list. Unused native test dependencies and Cargo settings that the workspace ignored were removed.
 Legacy meeting data, recovery support, migration history, model files, and third-party licenses are retained.
 
-Discreet launch keeps the window hidden and silences app notifications for the session. Tray starts wait for saved audio-device preferences, and failed starts restore the tray controls. Closing without a working tray exits normally instead of hiding an inaccessible app. Operating-system microphone indicators remain outside this mode's control.
+Tray starts wait for saved audio-device preferences, and failed starts restore the tray controls. Closing without a working tray exits normally instead of hiding an inaccessible app.
 
 ```powershell
 pnpm check

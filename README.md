@@ -66,18 +66,8 @@ The tray tooltip shows recording status, and recording controls remain available
 For a single launch, use `meeting-workspace.exe --minimized`. Use `--show` to override the saved preference.
 If the tray cannot be created, the main window opens so the app remains accessible.
 
-## Discreet launch (stealth mode)
-
-Enable **Settings > General > Discreet launch (stealth mode)**, or launch with
-`meeting-workspace.exe --stealth`. The window stays hidden, app notifications are
-silent, and the tray tooltip shows only the app name. Tray recording actions do
-not bring the window forward. Recording starts only when you choose **Start Recording**.
-
-Use the tray menu to start, pause, resume, or stop recording, and **Open Main Window**
-to review transcripts and summaries. Those controls still show recording status.
-Operating-system microphone indicators and process listings remain visible; this
-mode does not make recording invisible. Use `--show` to override both saved launch
-preferences for a new session. If the app is already running, launching it again (for example double-clicking the .exe) opens its window.
+Starting a recording from the tray opens the window. If the app is already running,
+launching it again (for example double-clicking the .exe) opens its window.
 Tray recording waits for your saved audio-device choices to load. If a device
 cannot start, the tray controls recover so you can retry or open Settings.
 

@@ -2,18 +2,13 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Geist (SIL OFL, see public/fonts/Geist-LICENSE.txt), bundled so the app works offline. */
 @font-face {
-  font-family: 'AP Futura';
-  src: local('Futura LT Book'), local('Futura Lt BT Light'), local('Futura Lt BT');
+  font-family: 'Geist';
+  src: url('/fonts/Geist-Variable.woff2') format('woff2');
   font-style: normal;
-  font-weight: 400;
-}
-
-@font-face {
-  font-family: 'AP Futura';
-  src: local('Futura LT Bold'), local('Futura Md BT Bold'), local('Futura Md BT Medium');
-  font-style: normal;
-  font-weight: 700;
+  font-weight: 100 900;
+  font-display: swap;
 }
 
 @keyframes vibrate {
@@ -110,7 +105,7 @@
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
-    --ring: 8 100% 50%;
+    --ring: 0 0% 9%;
     --radius: 0.25rem;
     --ap-title-red: #ff0000;
     --ap-rule-red: #ff2400;

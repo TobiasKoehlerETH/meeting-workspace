@@ -6,6 +6,7 @@ import { Copy, FolderOpen, FileText } from 'lucide-react';
 import { useRecordingState, RecordingStatus } from '@/contexts/RecordingStateContext';
 import { finalizeTranscript } from '@/lib/finalize-transcript';
 import { toast } from 'sonner';
+import { TranscriptExportMenu } from './TranscriptExportMenu';
 
 interface TranscriptButtonGroupProps {
   transcriptCount: number;
@@ -41,12 +42,13 @@ export function TranscriptButtonGroup({
 
   return <div className="flex flex-wrap items-center gap-2">
     {meetingId && meetingFolderPath && <Button size="sm" disabled={busy}
-      onClick={() => void transcribe()} title="Transcribe locally using Settings > Transcription">
+      onClick={() => void transcribe()} title={transcriptCount ? 'Transcribe again' : 'Transcribe'}>
       <FileText size={16} className="mr-1" />
-      {isProcessing ? 'Transcribing…' : transcriptCount ? 'Transcribe again' : 'Transcribe'}
+      {isProcessing ? 'Transcribing…' : 'Transcribe'}
     </Button>}
     <Button variant="outline" size="sm" onClick={onCopyTranscript}
       disabled={transcriptCount === 0} aria-label="Copy transcript" title="Copy transcript"><Copy size={16} /></Button>
+    {meetingId && <TranscriptExportMenu meetingId={meetingId} disabled={transcriptCount === 0} />}
     <Button variant="outline" size="sm" onClick={() => void onOpenMeetingFolder()}
       aria-label="Open recording folder" title="Open recording folder"><FolderOpen size={16} /></Button>
   </div>;

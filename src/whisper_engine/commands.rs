@@ -37,6 +37,14 @@ fn get_models_directory() -> Option<PathBuf> {
     MODELS_DIR.lock().unwrap().clone()
 }
 
+/// True when a catalog model's file is fully present (a download in progress is written elsewhere).
+pub fn whisper_model_downloaded(model_name: &str) -> bool {
+    let Some(dir) = get_models_directory() else { return false };
+    WHISPER_MODEL_CATALOG.iter().find(|(name, ..)| *name == model_name).is_some_and(|&(_, filename, size_mb, ..)| {
+        std::fs::metadata(dir.join(filename)).is_ok_and(|meta| meta.len() >= size_mb as u64 * 1024 * 1024 * 9 / 10)
+    })
+}
+
 #[command]
 pub async fn whisper_init() -> Result<(), String> {
     let mut guard = WHISPER_ENGINE.lock().unwrap();

@@ -1,5 +1,4 @@
 import { toast } from 'sonner';
-import { invoke } from '@tauri-apps/api/core';
 
 /**
  * Shows the recording notification toast with compliance message.
@@ -12,7 +11,6 @@ import { invoke } from '@tauri-apps/api/core';
  */
 export async function showRecordingNotification(): Promise<void> {
   try {
-    if (await invoke<boolean>('is_stealth_mode_active')) return;
     const { Store } = await import('@tauri-apps/plugin-store');
     const store = await Store.load('preferences.json');
     const showNotification = await store.get<boolean>('show_recording_notification') ?? true;

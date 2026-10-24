@@ -1,10 +1,11 @@
 'use client';
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { currentMonitor, getCurrentWindow, LogicalSize, PhysicalPosition, PhysicalSize } from '@tauri-apps/api/window';
+import { availableMonitors, currentMonitor, primaryMonitor, getCurrentWindow, PhysicalPosition, PhysicalSize } from '@tauri-apps/api/window';
+import type { Monitor } from '@tauri-apps/api/window';
+import { miniRecorderBounds, parseWindowPosition, visibleWindowBounds } from '@/lib/recorder-window';
 import { useRecordingState } from './RecordingStateContext';
 
-const MINI_SIZE = new LogicalSize(232, 48);
 const AUTO_KEY = 'mini-recorder-auto';
 const POSITION_KEY = 'mini-recorder-position';
 
@@ -27,18 +28,36 @@ export function useMiniRecorder() {
 const read = (key: string) => { try { return localStorage.getItem(key); } catch { return null; } };
 const write = (key: string, value: string) => { try { localStorage.setItem(key, value); } catch { /* convenience only */ } };
 
-/** Top-right of the monitor's work area, unless the user dragged the mini recorder elsewhere before. */
-async function miniPosition() {
-  const saved = read(POSITION_KEY);
-  if (saved) {
-    const { x, y } = JSON.parse(saved);
-    return new PhysicalPosition(x, y);
-  }
-  const monitor = await currentMonitor();
-  if (!monitor) return new PhysicalPosition(24, 24);
-  const { position, size } = monitor.workArea;
-  const margin = 24 * monitor.scaleFactor;
-  return new PhysicalPosition(position.x + size.width - MINI_SIZE.width * monitor.scaleFactor - margin, position.y + margin);
+async function connectedMonitors(): Promise<Monitor[]> {
+  const [monitors, current, primary] = await Promise.all([availableMonitors(), currentMonitor(), primaryMonitor()]);
+  const preferred = current ?? primary;
+  return preferred ? [preferred, ...monitors] : monitors;
+}
+
+interface SavedWindow {
+  size: PhysicalSize;
+  position: PhysicalPosition;
+  maximized: boolean;
+}
+
+async function restoreWindow(saved: SavedWindow) {
+  const monitors = await connectedMonitors();
+  const initial = visibleWindowBounds(saved, monitors);
+  const win = getCurrentWindow();
+  await win.setAlwaysOnTop(false);
+  await win.setDecorations(true);
+  await win.setResizable(true);
+  await win.setPosition(new PhysicalPosition(initial.position.x, initial.position.y));
+  await win.setSize(new PhysicalSize(initial.size.width, initial.size.height));
+  const outerSize = await win.outerSize();
+  const innerSize = await win.innerSize();
+  const bounds = visibleWindowBounds({ position: initial.position, size: outerSize }, monitors);
+  await win.setSize(new PhysicalSize(
+    Math.max(1, bounds.size.width - (outerSize.width - innerSize.width)),
+    Math.max(1, bounds.size.height - (outerSize.height - innerSize.height)),
+  ));
+  await win.setPosition(new PhysicalPosition(bounds.position.x, bounds.position.y));
+  if (saved.maximized) await win.maximize();
 }
 
 /**
@@ -49,44 +68,59 @@ export function MiniRecorderProvider({ children }: { children: React.ReactNode }
   const { isRecording } = useRecordingState();
   const [isMini, setIsMini] = useState(false);
   const [autoMini, setAutoMiniState] = useState(() => read(AUTO_KEY) === 'true');
-  const restore = useRef<{ size: PhysicalSize; position: PhysicalPosition; maximized: boolean } | null>(null);
+  const restore = useRef<SavedWindow | null>(null);
+  const transition = useRef(Promise.resolve());
   const wasRecording = useRef(isRecording);
 
-  const enterMini = useCallback(async () => {
-    if (restore.current) return;
-    const win = getCurrentWindow();
-    try {
-      restore.current = { size: await win.innerSize(), position: await win.outerPosition(), maximized: await win.isMaximized() };
-      setIsMini(true);
-      if (restore.current.maximized) await win.unmaximize();
-      await win.setDecorations(false);
-      await win.setResizable(false);
-      await win.setAlwaysOnTop(true);
-      await win.setSize(MINI_SIZE);
-      await win.setPosition(await miniPosition());
-    } catch (error) {
-      console.error('Could not open the mini recorder:', error);
-    }
+  const enterMini = useCallback(() => {
+    transition.current = transition.current.then(async () => {
+      if (restore.current) return;
+      const win = getCurrentWindow();
+      try {
+        const bounds = miniRecorderBounds(parseWindowPosition(read(POSITION_KEY)), await connectedMonitors());
+        restore.current = { size: await win.innerSize(), position: await win.outerPosition(), maximized: await win.isMaximized() };
+        if (restore.current.maximized) await win.unmaximize();
+        await win.setDecorations(false);
+        await win.setResizable(false);
+        await win.setAlwaysOnTop(true);
+        // Move before sizing so a different monitor's DPI applies to the mini recorder.
+        await win.setPosition(new PhysicalPosition(bounds.position.x, bounds.position.y));
+        await win.setSize(new PhysicalSize(bounds.size.width, bounds.size.height));
+        await win.setPosition(new PhysicalPosition(bounds.position.x, bounds.position.y));
+        setIsMini(true);
+      } catch (error) {
+        console.error('Could not open the mini recorder:', error);
+        if (restore.current) {
+          try {
+            await restoreWindow(restore.current);
+            restore.current = null;
+            setIsMini(false);
+          } catch (restoreError) {
+            console.error('Could not restore the main window:', restoreError);
+            setIsMini(true);
+          }
+        }
+      }
+    });
+    return transition.current;
   }, []);
 
-  const exitMini = useCallback(async () => {
-    const saved = restore.current;
-    if (!saved) return;
-    restore.current = null;
-    const win = getCurrentWindow();
-    try {
-      const { x, y } = await win.outerPosition();
-      write(POSITION_KEY, JSON.stringify({ x, y }));
-      await win.setAlwaysOnTop(false);
-      await win.setDecorations(true);
-      await win.setResizable(true);
-      await win.setSize(saved.size);
-      await win.setPosition(saved.position);
-      if (saved.maximized) await win.maximize();
-    } catch (error) {
-      console.error('Could not restore the main window:', error);
-    }
-    setIsMini(false);
+  const exitMini = useCallback(() => {
+    transition.current = transition.current.then(async () => {
+      const saved = restore.current;
+      if (!saved) return;
+      const win = getCurrentWindow();
+      try {
+        const { x, y } = await win.outerPosition();
+        write(POSITION_KEY, JSON.stringify({ x, y }));
+        await restoreWindow(saved);
+        restore.current = null;
+        setIsMini(false);
+      } catch (error) {
+        console.error('Could not restore the main window:', error);
+      }
+    });
+    return transition.current;
   }, []);
 
   // Enter on a fresh start when the user prefers it; leave whenever recording ends.

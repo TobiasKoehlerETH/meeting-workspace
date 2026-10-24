@@ -37,4 +37,4 @@ The Windows build is unsigned. Live device capture and hardware acceleration nee
 
 The source layout is `app/` for pages, `components/` for UI, `src/` for Rust, and `src-tauri/` for native configuration and resources.
 The Windows build stages the pinned sherpa-onnx runtime and two speaker models with checksum verification. They are bundled under `speaker-runtime`; Python is used only by the build script. `-TestSpeakers` checks automatic and known-count grouping against the upstream four-speaker audio fixture.
-Font files are not bundled. The source app icon is `public/app-icon.ico`.
+The Geist UI font is bundled in `public/fonts/` (SIL OFL). The source app icon is `public/app-icon.ico`.

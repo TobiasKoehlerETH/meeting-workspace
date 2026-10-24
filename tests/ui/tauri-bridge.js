@@ -21,7 +21,8 @@
   let recording = false;
   let paused = false;
   let meetingName = null;
-  const launchPreferences = { start_minimized: false, stealth_mode: false };
+  const monitor = { name: 'QA', scaleFactor: 1, position: { x: 0, y: 0 }, size: { width: 1920, height: 1080 }, workArea: { position: { x: 0, y: 0 }, size: { width: 1920, height: 1040 } } };
+  const launchPreferences = { start_minimized: false };
   let speakerSettings = { enabled: true, speaker_count: 0 };
   const notificationSettings = { recording_notifications: true, time_based_reminders: false, meeting_reminders: false, respect_do_not_disturb: true, notification_sound: false, system_permission_granted: true, consent_given: true, manual_dnd_mode: false, notification_preferences: { show_recording_started: true, show_recording_stopped: true, show_recording_paused: true, show_recording_resumed: true, show_transcription_complete: true, show_meeting_reminders: false, show_system_errors: true, meeting_reminder_minutes: [15] } };
   const available = scenario !== 'no-models';
@@ -67,9 +68,10 @@
       if (command.startsWith('plugin:path|')) return args.paths?.join('\\') || root + (args.path ? '\\' + args.path : '');
       if (command === 'plugin:app|version') return '0.4.0';
       if (command === 'plugin:app|name') return 'Meeting Workspace';
-      if (command === 'plugin:window|inner_size') return { width: innerWidth, height: innerHeight };
+      if (command === 'plugin:window|inner_size' || command === 'plugin:window|outer_size') return { width: innerWidth, height: innerHeight };
       if (command === 'plugin:window|outer_position') return { x: 0, y: 0 };
-      if (command === 'plugin:window|current_monitor') return { name: 'QA', scaleFactor: 1, position: { x: 0, y: 0 }, size: { width: 1920, height: 1080 }, workArea: { position: { x: 0, y: 0 }, size: { width: 1920, height: 1040 } } };
+      if (command === 'plugin:window|current_monitor' || command === 'plugin:window|primary_monitor') return monitor;
+      if (command === 'plugin:window|available_monitors') return [monitor];
       if (command === 'plugin:window|is_maximized') return false;
       if (command.startsWith('plugin:window|') || command.startsWith('plugin:webview|')) return command.endsWith('get_all_windows') ? ['main'] : null;
       if (command.startsWith('plugin:notification|')) return true;
@@ -81,10 +83,7 @@
       if (command === 'list_meeting_speakers') return [...new Set(transcripts.map(t => t.speaker).filter(Boolean))];
       if (command === 'rename_meeting_speaker') { transcripts.forEach(t => { if (t.speaker === args.speaker) t.speaker = args.name; }); return null; }
       if (command === 'get_start_minimized') return launchPreferences.start_minimized;
-      if (command === 'get_stealth_mode') return launchPreferences.stealth_mode;
       if (command === 'set_start_minimized') { launchPreferences.start_minimized = args.enabled; return null; }
-      if (command === 'set_stealth_mode') { launchPreferences.stealth_mode = args.enabled; return null; }
-      if (command === 'is_stealth_mode_active') return scenario === 'stealth';
       if (command === 'finalize_local_transcript') {
         document.documentElement.dataset.qaFinalPass = args.meetingId;
         for (const [progress_percentage, message] of [[5, 'Decoding audio…'], [20, 'Detecting speakers locally…'], [55, 'Transcribing segment 2 of 4…'], [90, 'Saving transcript…']]) {

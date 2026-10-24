@@ -1,4 +1,5 @@
 pub mod whisper_engine;
+pub mod hf_convert;
 pub mod acceleration;
 pub mod commands;
 pub mod system_monitor;

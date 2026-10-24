@@ -74,7 +74,7 @@ export function SpeechModelManager({ provider, selectedModel, onSelect }: Props)
         </span>
       </button>
       <span className="shrink-0 text-right text-xs tabular-nums text-gray-600" title={hour.measured ? 'Based on transcriptions on this device' : 'Estimate; it adapts after you transcribe on this device'}>
-        1 h audio → {formatEstimate(hour)}
+        {formatEstimate(hour)}/h
       </span>
       <span className="w-24 shrink-0 text-right text-xs">
         {progress !== null ? <button type="button" className="text-gray-600 hover:text-red-700" onClick={() => void run(model.name, () => api.cancel(model.name), 'Missing')}>{progress}% · Cancel</button>

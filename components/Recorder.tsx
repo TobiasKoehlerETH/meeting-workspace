@@ -63,17 +63,19 @@ export function Recorder() {
         className={`${round} h-24 w-24 bg-red-600 text-white shadow-lg hover:bg-red-700`}>
         {pending || status === RecordingStatus.STARTING ? <span className="h-6 w-6 animate-spin rounded-full border-2 border-white border-b-transparent" /> : <Mic className="h-9 w-9" />}
       </button>
-      <p className="text-sm font-medium" role="status">{busy ? 'Preparing...' : 'Start recording'}</p>
+      <p className="sr-only" role="status">{busy ? 'Preparing...' : 'Ready to record'}</p>
       <div className="recorder-options">
-        <button type="button" className="flex items-center gap-2 hover:text-black" onClick={() => openSettings('recording')}>
-          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />Audio devices
+        <button type="button" aria-label="Audio devices" title="Audio devices" className="rounded-full p-2 hover:bg-gray-100 hover:text-black"
+          onClick={() => openSettings('recording')}>
+          <SlidersHorizontal className="h-4 w-4" aria-hidden="true" />
         </button>
-        <button type="button" className="hover:text-black" onClick={() => openSettings('transcription')}
-          title="Expected processing time for one hour of audio on this device">
-          {modelLabel(model)} &middot; 1 h audio &rarr; {formatEstimate(estimate(model, 3600))}
+        <button type="button" className="rounded-full px-3 py-1.5 hover:bg-gray-100 hover:text-black" onClick={() => openSettings('transcription')}
+          title="Transcription model and time per hour of audio">
+          {modelLabel(model)} &middot; {formatEstimate(estimate(model, 3600))}/h
         </button>
-        <label className="flex items-center gap-2">
-          <Switch checked={autoMini} onCheckedChange={setAutoMini} />Mini view while recording
+        <label className="flex items-center gap-2 rounded-full px-2 py-1.5" title="Mini view while recording">
+          <Switch checked={autoMini} onCheckedChange={setAutoMini} aria-label="Mini view while recording" />
+          <Minimize2 className="h-4 w-4" aria-hidden="true" />
         </label>
       </div>
       {!isChecking && <PermissionWarning hasMicrophone={hasMicrophone} hasSystemAudio={hasSystemAudio}
@@ -84,11 +86,11 @@ export function Recorder() {
 
   return <div className="recorder-page">
     <section className="recorder-card" aria-label="Recording controls">
-    <p role="status" className="flex items-center gap-2 text-sm text-gray-600">
-      <span className={`h-2.5 w-2.5 rounded-full ${isPaused ? 'bg-orange-500' : 'animate-pulse bg-red-600'}`} />
-      {isPaused ? 'Paused' : 'Recording'}
+    <p className="flex items-center gap-3 text-6xl font-light tabular-nums">
+      <span role="status" aria-label={isPaused ? 'Paused' : 'Recording'} title={isPaused ? 'Paused' : 'Recording'}
+        className={`h-3 w-3 rounded-full ${isPaused ? 'bg-orange-500' : 'animate-pulse bg-red-600'}`} />
+      {formatClock(activeDuration)}
     </p>
-    <p className="text-6xl font-light tabular-nums">{formatClock(activeDuration)}</p>
     <div className="flex items-center gap-4">
       <button type="button" aria-label={isPaused ? 'Resume recording' : 'Pause recording'} disabled={busy}
         onClick={() => void run(() => isPaused ? recordingService.resumeRecording() : recordingService.pauseRecording(), 'Could not change the pause state')}
@@ -105,7 +107,7 @@ export function Recorder() {
         <Minimize2 className="h-5 w-5" />
       </button>
     </div>
-    <p className="text-center text-sm text-gray-500">Transcription: {formatEstimate(estimate(model, activeDuration ?? 0))}</p>
+    <p className="text-sm text-gray-400" title="Estimated transcription time">{formatEstimate(estimate(model, activeDuration ?? 0))}</p>
     </section>
   </div>;
 }
@@ -118,7 +120,7 @@ export function MiniRecorder() {
   const { exitMini } = useMiniRecorder();
   const { pending, run } = useAction();
 
-  return <div data-tauri-drag-region className="ap-mini-recorder flex h-screen select-none items-center gap-3 border-t-[3px] border-[var(--ap-rule-red)] bg-white px-3">
+  return <div data-tauri-drag-region className="ap-mini-recorder flex h-screen select-none items-center gap-3 border border-gray-200 bg-white px-3">
     <span data-tauri-drag-region className={`h-2.5 w-2.5 shrink-0 rounded-full ${isPaused ? 'bg-orange-500' : 'animate-pulse bg-red-600'}`} />
     <span data-tauri-drag-region className="flex-1 text-sm tabular-nums">{formatClock(activeDuration)}</span>
     <button type="button" disabled={pending} onClick={() => void run(async () => { await exitMini(); await stopRecording(); }, 'Could not stop recording')}

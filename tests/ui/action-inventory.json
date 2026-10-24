@@ -14,19 +14,19 @@
     },
     {
       "file": "components/AISummary/index.tsx",
-      "line": 681,
+      "line": 674,
       "event": "onClick",
       "handler": "{e => e.stopPropagation()}"
     },
     {
       "file": "components/AISummary/index.tsx",
-      "line": 685,
+      "line": 678,
       "event": "onClick",
       "handler": "{handleCopyBlocks}"
     },
     {
       "file": "components/AISummary/index.tsx",
-      "line": 692,
+      "line": 685,
       "event": "onClick",
       "handler": "{handleDeleteBlocks}"
     },
@@ -38,49 +38,49 @@
     },
     {
       "file": "components/BetaSettings.tsx",
-      "line": 54,
+      "line": 46,
       "event": "onCheckedChange",
       "handler": "{(checked) => toggleBetaFeature(featureKey, checked)}"
     },
     {
       "file": "components/BuiltInModelManager.tsx",
-      "line": 312,
+      "line": 308,
       "event": "onClick",
       "handler": "{() => {\r\n                if (isAvailable && !modelIsDownloading) {\r\n                  onModelSelect(model.name);\r\n                }\r\n              }}"
     },
     {
       "file": "components/BuiltInModelManager.tsx",
-      "line": 356,
+      "line": 352,
       "event": "onClick",
       "handler": "{(e) => {\r\n                        e.stopPropagation();\r\n                        downloadModel(model.name);\r\n                      }}"
     },
     {
       "file": "components/BuiltInModelManager.tsx",
-      "line": 371,
+      "line": 367,
       "event": "onClick",
       "handler": "{(e) => {\r\n                        e.stopPropagation();\r\n                        cancelDownload(model.name);\r\n                      }}"
     },
     {
       "file": "components/BuiltInModelManager.tsx",
-      "line": 385,
+      "line": 381,
       "event": "onClick",
       "handler": "{(e) => {\r\n                        e.stopPropagation();\r\n                        downloadModel(model.name);\r\n                      }}"
     },
     {
       "file": "components/BuiltInModelManager.tsx",
-      "line": 400,
+      "line": 396,
       "event": "onClick",
       "handler": "{(e) => {\r\n                          e.stopPropagation();\r\n                          downloadModel(model.name);\r\n                        }}"
     },
     {
       "file": "components/BuiltInModelManager.tsx",
-      "line": 411,
+      "line": 407,
       "event": "onClick",
       "handler": "{(e) => {\r\n                          e.stopPropagation();\r\n                          deleteModel(model.name);\r\n                        }}"
     },
     {
       "file": "components/BuiltInModelManager.tsx",
-      "line": 425,
+      "line": 421,
       "event": "onClick",
       "handler": "{(e) => {\r\n                        e.stopPropagation();\r\n                        deleteModel(model.name);\r\n                      }}"
     },
@@ -134,9 +134,15 @@
     },
     {
       "file": "components/EmptyStateSummary.tsx",
-      "line": 40,
+      "line": 22,
       "event": "onClick",
       "handler": "{onGenerate}"
+    },
+    {
+      "file": "components/ImportAudio/ImportAudioDialog.tsx",
+      "line": 297,
+      "event": "onClick",
+      "handler": "{handleSelectFile}"
     },
     {
       "file": "components/ImportAudio/ImportAudioDialog.tsx",
@@ -146,55 +152,49 @@
     },
     {
       "file": "components/ImportAudio/ImportAudioDialog.tsx",
-      "line": 311,
-      "event": "onClick",
-      "handler": "{handleSelectFile}"
-    },
-    {
-      "file": "components/ImportAudio/ImportAudioDialog.tsx",
-      "line": 332,
+      "line": 325,
       "event": "onClick",
       "handler": "{() => setShowAdvanced(!showAdvanced)}"
     },
     {
       "file": "components/ImportAudio/ImportAudioDialog.tsx",
-      "line": 352,
+      "line": 345,
       "event": "onValueChange",
       "handler": "{setSelectedLang}"
     },
     {
       "file": "components/ImportAudio/ImportAudioDialog.tsx",
-      "line": 386,
+      "line": 379,
       "event": "onValueChange",
       "handler": "{setSelectedModelKey}"
     },
     {
       "file": "components/ImportAudio/ImportAudioDialog.tsx",
-      "line": 442,
+      "line": 435,
       "event": "onClick",
       "handler": "{() => onOpenChange(false)}"
     },
     {
       "file": "components/ImportAudio/ImportAudioDialog.tsx",
-      "line": 446,
+      "line": 439,
       "event": "onClick",
       "handler": "{handleStartImport}"
     },
     {
       "file": "components/ImportAudio/ImportAudioDialog.tsx",
-      "line": 456,
+      "line": 449,
       "event": "onClick",
       "handler": "{handleCancel}"
     },
     {
       "file": "components/ImportAudio/ImportAudioDialog.tsx",
-      "line": 463,
+      "line": 456,
       "event": "onClick",
       "handler": "{() => onOpenChange(false)}"
     },
     {
       "file": "components/ImportAudio/ImportAudioDialog.tsx",
-      "line": 466,
+      "line": 459,
       "event": "onClick",
       "handler": "{reset}"
     },
@@ -218,7 +218,7 @@
     },
     {
       "file": "components/LaunchSettings.tsx",
-      "line": 52,
+      "line": 50,
       "event": "onCheckedChange",
       "handler": "{savePreference}"
     },
@@ -284,7 +284,7 @@
     },
     {
       "file": "components/ModelSettingsModal.tsx",
-      "line": 42,
+      "line": 41,
       "event": "onClick",
       "handler": "{() => onSave({ ...modelConfig, provider: 'builtin-ai', apiKey: null })}"
     },
@@ -314,37 +314,37 @@
     },
     {
       "file": "components/onboarding/steps/DownloadProgressStep.tsx",
-      "line": 459,
+      "line": 458,
       "event": "onClick",
       "handler": "{title === 'Transcription Engine' ? handleRetryDownload : handleRetrySummaryDownload}"
     },
     {
       "file": "components/onboarding/steps/DownloadProgressStep.tsx",
-      "line": 526,
+      "line": 521,
       "event": "onClick",
       "handler": "{handleContinue}"
     },
     {
       "file": "components/onboarding/steps/PermissionsStep.tsx",
-      "line": 149,
+      "line": 148,
       "event": "onClick",
       "handler": "{handleFinish}"
     },
     {
       "file": "components/onboarding/steps/PermissionsStep.tsx",
-      "line": 154,
+      "line": 153,
       "event": "onClick",
       "handler": "{handleSkip}"
     },
     {
       "file": "components/onboarding/steps/SetupOverviewStep.tsx",
-      "line": 94,
+      "line": 71,
       "event": "onClick",
       "handler": "{handleContinue}"
     },
     {
       "file": "components/onboarding/steps/WelcomeStep.tsx",
-      "line": 56,
+      "line": 20,
       "event": "onClick",
       "handler": "{goNext}"
     },
@@ -368,61 +368,61 @@
     },
     {
       "file": "components/PreferenceSettings.tsx",
-      "line": 30,
+      "line": 29,
       "event": "onCheckedChange",
       "handler": "{toggle}"
     },
     {
       "file": "components/Recorder.tsx",
-      "line": 60,
+      "line": 62,
       "event": "onClick",
       "handler": "{() => void run(handleRecordingStart, 'Recording could not start', explainStartError)}"
     },
     {
       "file": "components/Recorder.tsx",
-      "line": 65,
+      "line": 68,
       "event": "onClick",
       "handler": "{() => openSettings('recording')}"
     },
     {
       "file": "components/Recorder.tsx",
-      "line": 68,
+      "line": 71,
       "event": "onClick",
       "handler": "{() => openSettings('transcription')}"
     },
     {
       "file": "components/Recorder.tsx",
-      "line": 73,
+      "line": 76,
       "event": "onCheckedChange",
       "handler": "{setAutoMini}"
     },
     {
       "file": "components/Recorder.tsx",
-      "line": 89,
+      "line": 94,
       "event": "onClick",
       "handler": "{() => void run(() => isPaused ? recordingService.resumeRecording() : recordingService.pauseRecording(), 'Could not change the pause state')}"
     },
     {
       "file": "components/Recorder.tsx",
-      "line": 94,
+      "line": 99,
       "event": "onClick",
       "handler": "{() => void run(stopRecording, 'Could not stop recording')}"
     },
     {
       "file": "components/Recorder.tsx",
-      "line": 99,
+      "line": 104,
       "event": "onClick",
       "handler": "{() => void enterMini()}"
     },
     {
       "file": "components/Recorder.tsx",
-      "line": 118,
+      "line": 124,
       "event": "onClick",
       "handler": "{() => void run(async () => { await exitMini(); await stopRecording(); }, 'Could not stop recording')}"
     },
     {
       "file": "components/Recorder.tsx",
-      "line": 122,
+      "line": 128,
       "event": "onClick",
       "handler": "{() => void exitMini()}"
     },
@@ -446,67 +446,67 @@
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 88,
+      "line": 92,
       "event": "onClick",
       "handler": "{() => { setCurrentMeeting(meeting); router.push('/meeting-details?id=' + encodeURIComponent(meeting.id)); }}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 93,
+      "line": 97,
       "event": "onClick",
       "handler": "{() => setRenaming(meeting)}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 94,
+      "line": 98,
       "event": "onClick",
       "handler": "{() => setDeleting(meeting.id)}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 106,
+      "line": 110,
       "event": "onClick",
       "handler": "{toggleCollapse}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 113,
+      "line": 117,
       "event": "onClick",
       "handler": "{() => router.push('/')}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 116,
+      "line": 120,
       "event": "onClick",
       "handler": "{() => openImportDialog()}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 123,
+      "line": 127,
       "event": "onClick",
       "handler": "{() => { expandSidebar(); setListOpen(true); }}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 130,
+      "line": 134,
       "event": "onClick",
       "handler": "{() => search('')}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 142,
+      "line": 147,
       "event": "onClick",
       "handler": "{() => setSettingsTab('general')}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 161,
+      "line": 166,
       "event": "onSubmit",
       "handler": "{event => { event.preventDefault(); void rename(); }}"
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 167,
+      "line": 172,
       "event": "onClick",
       "handler": "{() => setRenaming(null)}"
     },
@@ -542,13 +542,13 @@
     },
     {
       "file": "components/SummaryLanguageSettings.tsx",
-      "line": 46,
+      "line": 45,
       "event": "onClick",
       "handler": "{() => togglePin(code)}"
     },
     {
       "file": "components/SummaryLanguageSettings.tsx",
-      "line": 61,
+      "line": 60,
       "event": "onClick",
       "handler": "{() => removeRecent(code)}"
     },
@@ -584,7 +584,7 @@
     },
     {
       "file": "components/TranscriptSettings.tsx",
-      "line": 30,
+      "line": 29,
       "event": "onClick",
       "handler": "{() => setProvider(value)}"
     },
@@ -596,7 +596,7 @@
     },
     {
       "file": "lib/recordingNotification.tsx",
-      "line": 40,
+      "line": 38,
       "event": "onClick",
       "handler": "{async () => {\r\n                if (dontShowAgain) {\r\n                  const { Store } = await import('@tauri-apps/plugin-store');\r\n                  const store = await Store.loa"
     }
@@ -604,7 +604,7 @@
   "invocations": [
     {
       "file": "app/layout.tsx",
-      "line": 93,
+      "line": 97,
       "command": "get_onboarding_status",
       "registered": true
     },
@@ -634,19 +634,19 @@
     },
     {
       "file": "components/AudioBackendSelector.tsx",
-      "line": 36,
+      "line": 34,
       "command": "get_audio_backend_info",
       "registered": true
     },
     {
       "file": "components/AudioBackendSelector.tsx",
-      "line": 41,
+      "line": 39,
       "command": "get_current_audio_backend",
       "registered": true
     },
     {
       "file": "components/AudioBackendSelector.tsx",
-      "line": 61,
+      "line": 59,
       "command": "set_audio_backend",
       "registered": true
     },
@@ -826,31 +826,31 @@
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 59,
+      "line": 63,
       "command": "api_delete_meeting",
       "registered": true
     },
     {
       "file": "components/Sidebar/index.tsx",
-      "line": 73,
+      "line": 77,
       "command": "api_save_meeting_title",
       "registered": true
     },
     {
       "file": "components/Sidebar/SidebarProvider.tsx",
-      "line": 60,
+      "line": 62,
       "command": "api_get_meetings",
       "registered": true
     },
     {
       "file": "components/Sidebar/SidebarProvider.tsx",
-      "line": 75,
+      "line": 84,
       "command": "api_search_transcripts",
       "registered": true
     },
     {
       "file": "components/Sidebar/SidebarProvider.tsx",
-      "line": 99,
+      "line": 114,
       "command": "api_get_summary",
       "registered": true
     },
@@ -1278,12 +1278,6 @@
       "file": "lib/finalize-transcript.ts",
       "line": 40,
       "command": "finalize_local_transcript",
-      "registered": true
-    },
-    {
-      "file": "lib/recordingNotification.tsx",
-      "line": 15,
-      "command": "is_stealth_mode_active",
       "registered": true
     },
     {

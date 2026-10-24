@@ -30,7 +30,8 @@ export function SummaryUpdaterButtonGroup({
         variant="outline"
         size="sm"
         className={`${isDirty ? 'bg-green-200' : ""}`}
-        title={isSaving ? "Saving" : "Save Changes"}
+        title={isSaving ? "Saving" : "Save changes"}
+        aria-label={isSaving ? "Saving" : "Save changes"}
         onClick={() => {
           
           onSave();
@@ -40,12 +41,10 @@ export function SummaryUpdaterButtonGroup({
         {isSaving ? (
           <>
             <Loader2 className="animate-spin" />
-            <span className="hidden lg:inline">Saving...</span>
           </>
         ) : (
           <>
             <Save />
-            <span className="hidden lg:inline">Save</span>
           </>
         )}
       </Button>
@@ -54,7 +53,8 @@ export function SummaryUpdaterButtonGroup({
       <Button
         variant="outline"
         size="sm"
-        title="Copy Summary"
+        title="Copy summary"
+        aria-label="Copy summary"
         onClick={() => {
           
           onCopy();
@@ -63,7 +63,6 @@ export function SummaryUpdaterButtonGroup({
         className="cursor-pointer"
       >
         <Copy />
-        <span className="hidden lg:inline">Copy</span>
       </Button>
     </ButtonGroup>
   );

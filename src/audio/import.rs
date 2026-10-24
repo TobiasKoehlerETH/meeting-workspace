@@ -265,6 +265,8 @@ pub async fn start_import<R: Runtime>(
     // Reset cancellation flag
     IMPORT_CANCELLED.store(false, Ordering::SeqCst);
 
+    let swiss_german_ready = crate::whisper_engine::commands::whisper_model_downloaded(crate::config::SWISS_GERMAN_WHISPER_MODEL);
+    let (provider, model) = crate::config::speech_model_for_language(provider, model, language.as_deref(), swiss_german_ready);
     let use_parakeet = provider.as_deref() == Some("parakeet");
     let result = run_import(
         app.clone(),
@@ -317,7 +319,6 @@ async fn run_import<R: Runtime>(
     provider: Option<String>,
 ) -> Result<ImportResult> {
     let source = PathBuf::from(&source_path);
-    let language = language.map(|value| crate::config::normalize_spoken_language(&value).to_owned());
 
     // Validate source file
     if !source.exists() {

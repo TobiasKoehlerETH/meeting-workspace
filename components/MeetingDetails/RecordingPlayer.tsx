@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { convertFileSrc, invoke } from '@tauri-apps/api/core';
+import { Loader2, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export function RecordingPlayer({ meetingId }: { meetingId: string }) {
@@ -18,8 +19,10 @@ export function RecordingPlayer({ meetingId }: { meetingId: string }) {
   }
   return <div className="mt-3">
     {source ? <audio aria-label="Saved meeting recording" className="w-full" controls preload="none" src={source}
-      onError={() => setError('Could not play this audio format. Use Open recording folder to play the original file.')} />
-      : <Button size="sm" variant="outline" disabled={busy} onClick={() => void load()}>{busy ? 'Loading recording…' : 'Listen to recording'}</Button>}
+      onError={() => setError('Cannot play this format. Open the recording folder instead.')} />
+      : <Button size="sm" variant="outline" disabled={busy} onClick={() => void load()} title="Listen to recording" aria-label="Listen to recording">
+        {busy ? <Loader2 className="animate-spin" aria-hidden="true" /> : <Play aria-hidden="true" />}Listen
+      </Button>}
     {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}
   </div>;
 }

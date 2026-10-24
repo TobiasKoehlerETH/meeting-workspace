@@ -16,6 +16,7 @@ test('a saved meeting starts inference only after Transcribe is clicked and reje
       RecordingStatus: { STARTING: 'starting', PROCESSING_TRANSCRIPTS: 'processing', COMPLETED: 'completed', ERROR: 'error' } },
     '@/lib/finalize-transcript': { finalizeTranscript: async (id, folder) => { calls.push(['transcribe', id, folder]); await pending; } },
     sonner: { toast: { error: message => calls.push(['error', message]) } },
+    './TranscriptExportMenu': { TranscriptExportMenu: () => null },
   }, { window: { dispatchEvent: event => calls.push(['event', event.type]) }, CustomEvent: class { constructor(type) { this.type = type; } } });
   let renderer;
   await act(async () => { renderer = create(React.createElement(TranscriptButtonGroup, {

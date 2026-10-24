@@ -57,12 +57,16 @@ pub async fn finalize_local_transcript<R: Runtime>(
     }
     let language = crate::get_language_preference_internal();
     let speakers = crate::speakers::get_speaker_settings(app.clone()).map(|s| s.enabled).unwrap_or(false);
+    // Resolve here too so timing estimates are recorded against the model that actually ran.
+    let swiss_german_ready = crate::whisper_engine::commands::whisper_model_downloaded(crate::config::SWISS_GERMAN_WHISPER_MODEL);
+    let (provider, model) = crate::config::speech_model_for_language(
+        Some(config.provider), Some(config.model), language.as_deref(), swiss_german_ready);
     let result = super::retranscription::start_retranscription(
         app.clone(), meeting_id, folder.to_string_lossy().into_owned(),
-        language, Some(config.model.clone()), Some(config.provider),
+        language, model.clone(), provider,
     ).await.map_err(|error| error.to_string())?;
     Ok(serde_json::json!({
         "segments": result.segments_count, "status": "final",
-        "duration_seconds": result.duration_seconds, "model": config.model, "speakers": speakers,
+        "duration_seconds": result.duration_seconds, "model": model, "speakers": speakers,
     }))
 }

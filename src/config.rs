@@ -11,19 +11,67 @@ pub const DEFAULT_WHISPER_MODEL: &str = "large-v3-turbo-q5_0";
 /// This is the quantized version optimized for speed.
 pub const DEFAULT_PARAKEET_MODEL: &str = "parakeet-tdt-0.6b-v3-int8";
 
-/// Whisper uses the German language hint for Swiss German speech.
-pub fn normalize_spoken_language(language: &str) -> &str {
+/// Whisper fine-tune for Swiss German speech, written as Standard German.
+/// Converted on download from `SWISS_GERMAN_CHECKPOINT` (MIT licence).
+pub const SWISS_GERMAN_WHISPER_MODEL: &str = "large-v3-turbo-swiss-german-q5_0";
+
+/// The source checkpoint, pinned to a revision and verified by SHA-256.
+pub struct ConvertedWhisperSource {
+    pub checkpoint_url: &'static str,
+    pub checkpoint_sha256: &'static str,
+    /// whisper.cpp file of the same architecture; its header supplies mel filters and vocabulary.
+    pub reference_url: &'static str,
+}
+
+pub const SWISS_GERMAN_CHECKPOINT: ConvertedWhisperSource = ConvertedWhisperSource {
+    checkpoint_url: "https://huggingface.co/gcoli/whisper-large-v3-turbo-swiss-german-mit/resolve/540fb2e7a9135048963c5de9822579c96f8962e5/model.safetensors",
+    checkpoint_sha256: "b37f10e1b905e7c6a0a7d3eb7462083b6e12caa71c06e26c83245d33337d246d",
+    reference_url: "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-large-v3-turbo.bin",
+};
+
+/// Whisper's language token for a spoken-language setting.
+/// Swiss German has no token of its own; the fine-tune is trained on `de` and writes Standard German.
+pub fn whisper_language(language: &str) -> &str {
     match language { "gsw" => "de", other => other }
+}
+
+/// Swiss German speech uses the Swiss German model once it is downloaded, whatever engine is chosen:
+/// Parakeet and the stock Whisper models do not know the dialects. Other languages keep the choice.
+pub fn speech_model_for_language(
+    provider: Option<String>,
+    model: Option<String>,
+    language: Option<&str>,
+    swiss_german_ready: bool,
+) -> (Option<String>, Option<String>) {
+    if language == Some("gsw") && swiss_german_ready {
+        (Some("localWhisper".into()), Some(SWISS_GERMAN_WHISPER_MODEL.into()))
+    } else {
+        (provider, model)
+    }
 }
 
 #[cfg(test)]
 mod language_tests {
+    use super::*;
+
     #[test]
-    fn swiss_german_uses_a_supported_german_hint() {
-        assert_eq!(super::normalize_spoken_language("gsw"), "de");
+    fn swiss_german_uses_the_german_token() {
+        assert_eq!(whisper_language("gsw"), "de");
         for language in ["de", "en", "auto"] {
-            assert_eq!(super::normalize_spoken_language(language), language);
+            assert_eq!(whisper_language(language), language);
         }
+    }
+
+    #[test]
+    fn swiss_german_switches_to_the_fine_tune_when_downloaded() {
+        let parakeet = || (Some("parakeet".to_string()), Some("parakeet-tdt-0.6b-v3-int8".to_string()));
+        let swiss = (Some("localWhisper".to_string()), Some(SWISS_GERMAN_WHISPER_MODEL.to_string()));
+        let (provider, model) = parakeet();
+        assert_eq!(speech_model_for_language(provider, model, Some("gsw"), true), swiss);
+        let (provider, model) = parakeet();
+        assert_eq!(speech_model_for_language(provider, model, Some("gsw"), false), parakeet());
+        let (provider, model) = parakeet();
+        assert_eq!(speech_model_for_language(provider, model, Some("de"), true), parakeet());
     }
 }
 
@@ -49,4 +97,7 @@ pub const WHISPER_MODEL_CATALOG: &[(&str, &str, u32, &str, &str, &str)] = &[
     ("medium-q5_0", "ggml-medium-q5_0.bin", 514, "High", "Medium", "Quantized medium model, professional quality"),
     ("large-v3-turbo-q5_0", "ggml-large-v3-turbo-q5_0.bin", 547, "High", "Medium", "Quantized large model, best balance"),
     ("large-v3-q5_0", "ggml-large-v3-q5_0.bin", 1031, "High", "Slow", "Quantized large model, high accuracy"),
+
+    // Converted from Hugging Face on download (see SWISS_GERMAN_CHECKPOINT)
+    ("large-v3-turbo-swiss-german-q5_0", "ggml-large-v3-turbo-swiss-german-q5_0.bin", 547, "High", "Medium", "Swiss German fine-tune of Turbo, Standard German text"),
 ];

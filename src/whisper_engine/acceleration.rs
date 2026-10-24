@@ -53,7 +53,8 @@ impl WhisperContextAcceleration {
             (WhisperCompiledBackend::Cuda, false) => "CUDA GPU acceleration",
             (WhisperCompiledBackend::Vulkan, _) => "Vulkan GPU acceleration",
             (WhisperCompiledBackend::HipBlas, _) => "HIP BLAS GPU acceleration",
-            (WhisperCompiledBackend::Cpu, _) => "CPU processing only",
+            (WhisperCompiledBackend::Cpu, true) => "CPU with Flash Attention",
+            (WhisperCompiledBackend::Cpu, false) => "CPU processing only",
         }
     }
 }
@@ -65,16 +66,18 @@ pub fn whisper_context_acceleration_for(
 ) -> WhisperContextAcceleration {
     let use_gpu = !matches!(compiled_backend, WhisperCompiledBackend::Cpu);
     let fast_tier = matches!(performance_tier, PerformanceTier::High | PerformanceTier::Ultra);
+    // whisper.cpp's CPU flash attention speeds up the encoder, which dominates Turbo's run time.
     let flash_attn = match compiled_backend {
         WhisperCompiledBackend::Metal | WhisperCompiledBackend::Cuda => fast_tier,
-        WhisperCompiledBackend::Vulkan | WhisperCompiledBackend::HipBlas | WhisperCompiledBackend::Cpu => false,
+        WhisperCompiledBackend::Cpu => true,
+        WhisperCompiledBackend::Vulkan | WhisperCompiledBackend::HipBlas => false,
     };
 
     WhisperContextAcceleration {
         compiled_backend,
         runtime_detected_gpu,
         use_gpu,
-        flash_attn: use_gpu && flash_attn,
+        flash_attn,
         gpu_device: 0,
     }
 }
@@ -129,7 +132,7 @@ mod tests {
     }
 
     #[test]
-    fn acceleration_cpu_backend_disables_gpu_and_flash_attention() {
+    fn acceleration_cpu_backend_disables_gpu_but_keeps_flash_attention() {
         for runtime_gpu in [GpuType::None, GpuType::Cuda, GpuType::Vulkan] {
             let params = whisper_context_acceleration_for(
                 WhisperCompiledBackend::Cpu,
@@ -138,7 +141,7 @@ mod tests {
             );
 
             assert!(!params.use_gpu);
-            assert!(!params.flash_attn);
+            assert!(params.flash_attn);
         }
     }
 }

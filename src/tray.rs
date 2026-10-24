@@ -2,7 +2,7 @@ use tauri::{
     Emitter,
     menu::{MenuBuilder, MenuItemBuilder, PredefinedMenuItem},
     tray::TrayIconBuilder,
-    AppHandle, Manager, Runtime,
+    AppHandle, Manager, PhysicalPosition, PhysicalRect, PhysicalSize, Runtime, WebviewWindow,
 };
 
 #[derive(Debug, Clone)]
@@ -16,10 +16,7 @@ pub enum RecordingState {
     Stopping,
 }
 
-fn recording_status_label(state: &RecordingState, stealth: bool) -> &'static str {
-    if stealth {
-        return "Meeting Workspace";
-    }
+fn recording_status_label(state: &RecordingState) -> &'static str {
     match state {
         RecordingState::Stopped => "Meeting Workspace — Not recording",
         RecordingState::Starting => "Meeting Workspace — Starting recording",
@@ -38,7 +35,7 @@ pub fn create_tray<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<()> {
 
     TrayIconBuilder::with_id("main-tray")
         .menu(&menu)
-        .tooltip(recording_status_label(&RecordingState::Stopped, crate::startup::is_stealth(app)))
+        .tooltip(recording_status_label(&RecordingState::Stopped))
         .icon(app.default_window_icon().unwrap().clone())
         .on_menu_event(|app, event| handle_menu_event(app, event.id.as_ref()))
         .build(app)?;
@@ -67,9 +64,7 @@ fn handle_menu_event<R: Runtime>(app: &AppHandle<R>, item_id: &str) {
     }
 }
 fn toggle_recording_handler<R: Runtime>(app: &AppHandle<R>) {
-    if !crate::startup::is_stealth(app) {
-        focus_main_window(app);
-    }
+    focus_main_window(app);
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         if crate::is_recording().await {
@@ -125,9 +120,7 @@ fn stop_recording_handler<R: Runtime>(app: &AppHandle<R>) {
     // Immediately show stopping state
     set_tray_state(app, RecordingState::Stopping);
 
-    if !crate::startup::is_stealth(app) {
-        focus_main_window(app);
-    }
+    focus_main_window(app);
     let app_clone = app.clone();
     tauri::async_runtime::spawn(async move {
         log::info!("Tray: Stopping recording...");
@@ -187,7 +180,7 @@ pub fn update_tray_menu<R: Runtime>(app: &AppHandle<R>) {
 pub fn set_tray_state<R: Runtime>(app: &AppHandle<R>, state: RecordingState) {
     log::info!("Tray: Setting intermediate state: {:?}", state);
     if let Some(tray) = app.tray_by_id("main-tray") {
-        let _ = tray.set_tooltip(Some(recording_status_label(&state, crate::startup::is_stealth(app))));
+        let _ = tray.set_tooltip(Some(recording_status_label(&state)));
     }
     // During recording state transitions, we assume recording is allowed (we're already recording)
     if let Ok(menu) = build_menu(app, state, true) {
@@ -263,7 +256,7 @@ pub async fn update_tray_menu_async<R: Runtime>(app: &AppHandle<R>) {
     // Get the current recording state
     let recording_state = get_current_recording_state().await;
     if let Some(tray) = app.tray_by_id("main-tray") {
-        let _ = tray.set_tooltip(Some(recording_status_label(&recording_state, crate::startup::is_stealth(app))));
+        let _ = tray.set_tooltip(Some(recording_status_label(&recording_state)));
     }
     log::info!("Tray: Current recording state: {:?}", recording_state);
 
@@ -367,6 +360,10 @@ pub(crate) fn focus_main_window<R: Runtime>(app: &AppHandle<R>) {
             log::error!("Failed to unminimize main window: {}", e);
         }
 
+        if let Err(e) = keep_main_window_in_view(&window) {
+            log::error!("Failed to restore main window to a visible monitor: {}", e);
+        }
+
         if let Err(e) = window.show() {
             log::error!("Failed to show main window: {}", e);
         }
@@ -383,17 +380,151 @@ pub(crate) fn focus_main_window<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
+fn keep_main_window_in_view<R: Runtime>(window: &WebviewWindow<R>) -> tauri::Result<()> {
+    if window.is_maximized()? || window.is_fullscreen()? {
+        return Ok(());
+    }
+
+    let position = window.outer_position()?;
+    let size = window.outer_size()?;
+    let monitors = window.available_monitors()?;
+    if monitors.iter().any(|monitor| {
+        let area = monitor.work_area();
+        size.width <= area.size.width
+            && size.height <= area.size.height
+            && position == clamp_window_position(position, size, area)
+    }) {
+        return Ok(());
+    }
+
+    let monitor = window
+        .current_monitor()
+        .ok()
+        .flatten()
+        .or_else(|| window.primary_monitor().ok().flatten())
+        .or_else(|| monitors.into_iter().next());
+    if let Some(monitor) = monitor {
+        let area = monitor.work_area();
+        window.set_position(clamp_window_position(position, size, area))?;
+
+        // Moving between monitors can change the physical size when their DPI differs.
+        let outer_size = window.outer_size()?;
+        let inner_size = window.inner_size()?;
+        let fitted_size = fitted_inner_size(inner_size, outer_size, area.size);
+        if fitted_size != inner_size {
+            window.set_size(fitted_size)?;
+        }
+        window.set_position(clamp_window_position(
+            window.outer_position()?,
+            window.outer_size()?,
+            area,
+        ))?;
+    }
+    Ok(())
+}
+
+fn fitted_inner_size(
+    inner: PhysicalSize<u32>,
+    outer: PhysicalSize<u32>,
+    available: PhysicalSize<u32>,
+) -> PhysicalSize<u32> {
+    PhysicalSize::new(
+        inner.width.saturating_sub(outer.width.saturating_sub(available.width)).max(1),
+        inner.height.saturating_sub(outer.height.saturating_sub(available.height)).max(1),
+    )
+}
+
+fn clamp_window_position(
+    position: PhysicalPosition<i32>,
+    size: PhysicalSize<u32>,
+    area: &PhysicalRect<i32, u32>,
+) -> PhysicalPosition<i32> {
+    // Oversized windows keep their title bar reachable at the work area's origin.
+    let max_x = i64::from(area.position.x) + i64::from(area.size.width.saturating_sub(size.width));
+    let max_y = i64::from(area.position.y) + i64::from(area.size.height.saturating_sub(size.height));
+    PhysicalPosition::new(
+        i64::from(position.x).clamp(i64::from(area.position.x), max_x) as i32,
+        i64::from(position.y).clamp(i64::from(area.position.y), max_y) as i32,
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn discreet_tooltip_is_neutral_during_every_recording_state() {
+    fn tooltip_always_includes_the_recording_status() {
         for state in [RecordingState::Stopped, RecordingState::Starting,
             RecordingState::Recording, RecordingState::Pausing, RecordingState::Paused,
             RecordingState::Resuming, RecordingState::Stopping] {
-            assert_eq!(recording_status_label(&state, true), "Meeting Workspace");
-            assert_ne!(recording_status_label(&state, false), "Meeting Workspace");
+            assert!(recording_status_label(&state).starts_with("Meeting Workspace — "));
+            assert!(recording_status_label(&state).to_lowercase().contains("recording"));
         }
+    }
+
+    #[test]
+    fn window_position_respects_negative_monitor_coordinates_and_taskbar() {
+        let area = PhysicalRect {
+            position: PhysicalPosition::new(-1920, 0),
+            size: PhysicalSize::new(1920, 1040),
+        };
+        let size = PhysicalSize::new(1000, 700);
+        assert_eq!(
+            clamp_window_position(PhysicalPosition::new(3000, 1500), size, &area),
+            PhysicalPosition::new(-1000, 340),
+        );
+        assert_eq!(
+            clamp_window_position(PhysicalPosition::new(-2500, -200), size, &area),
+            PhysicalPosition::new(-1920, 0),
+        );
+    }
+
+    #[test]
+    fn visible_window_keeps_its_position() {
+        let area = PhysicalRect {
+            position: PhysicalPosition::new(0, 40),
+            size: PhysicalSize::new(1920, 1040),
+        };
+        let position = PhysicalPosition::new(100, 100);
+        assert_eq!(
+            clamp_window_position(position, PhysicalSize::new(1000, 700), &area),
+            position,
+        );
+    }
+
+    #[test]
+    fn oversized_window_keeps_its_title_bar_in_view() {
+        let area = PhysicalRect {
+            position: PhysicalPosition::new(0, 40),
+            size: PhysicalSize::new(800, 560),
+        };
+        assert_eq!(
+            clamp_window_position(
+                PhysicalPosition::new(-100, 1200),
+                PhysicalSize::new(1000, 700),
+                &area,
+            ),
+            area.position,
+        );
+    }
+
+    #[test]
+    fn oversized_window_fits_with_its_frame_inside_the_work_area() {
+        assert_eq!(
+            fitted_inner_size(
+                PhysicalSize::new(1000, 700),
+                PhysicalSize::new(1016, 739),
+                PhysicalSize::new(800, 600),
+            ),
+            PhysicalSize::new(784, 561),
+        );
+        assert_eq!(
+            fitted_inner_size(
+                PhysicalSize::new(1000, 700),
+                PhysicalSize::new(1016, 739),
+                PhysicalSize::new(1920, 1080),
+            ),
+            PhysicalSize::new(1000, 700),
+        );
     }
 }

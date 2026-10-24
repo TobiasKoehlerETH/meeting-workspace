@@ -53,6 +53,7 @@ pub mod startup;
 mod speakers;
 pub mod summary;
 pub mod tray;
+pub mod transcript_export;
 pub mod utils;
 pub mod whisper_engine;
 
@@ -366,9 +367,10 @@ async fn set_language_preference(language: String) -> Result<(), String> {
     Ok(())
 }
 
-// Internal helper function to get language preference (for use within Rust code)
+// Internal helper function to get language preference (for use within Rust code).
+// Kept as chosen ("gsw" included): it selects the model, and Whisper maps it to its token.
 pub fn get_language_preference_internal() -> Option<String> {
-    LANGUAGE_PREFERENCE.lock().ok().map(|lang| crate::config::normalize_spoken_language(&lang).to_owned())
+    LANGUAGE_PREFERENCE.lock().ok().map(|lang| lang.clone())
 }
 
 pub fn run() {
@@ -385,8 +387,8 @@ pub fn run() {
                 cwd
             );
 
-            // Launching the app again is a deliberate request to see it, even in a discreet session.
-            // Only an explicit --minimized or --stealth on the new launch keeps the window hidden.
+            // Launching the app again is a deliberate request to see it.
+            // Only an explicit --minimized on the new launch keeps the window hidden.
             if !startup::should_start_minimized(&args, false, app.tray_by_id("main-tray").is_some()) {
                 tray::focus_main_window(app);
             }
@@ -408,9 +410,6 @@ pub fn run() {
             log::info!("Application setup complete");
 
             let args: Vec<String> = std::env::args().collect();
-            let saved_stealth = startup::get_stealth_mode(_app.handle().clone()).unwrap_or(false);
-            let stealth = startup::stealth_requested(&args, saved_stealth);
-            _app.manage(startup::LaunchMode { stealth });
 
             // Initialize system tray
             let tray_available = match tray::create_tray(_app.handle()) {
@@ -421,7 +420,7 @@ pub fn run() {
                 }
             };
             let saved = startup::get_start_minimized(_app.handle().clone()).unwrap_or(false);
-            if !startup::should_start_minimized(&args, saved || stealth, tray_available) {
+            if !startup::should_start_minimized(&args, saved, tray_available) {
                 tray::focus_main_window(_app.handle());
             }
 
@@ -528,11 +527,9 @@ pub fn run() {
             speakers::set_speaker_settings,
             speakers::list_meeting_speakers,
             speakers::rename_meeting_speaker,
+            transcript_export::export_meeting_transcript,
             startup::get_start_minimized,
             startup::set_start_minimized,
-            startup::get_stealth_mode,
-            startup::set_stealth_mode,
-            startup::is_stealth_mode_active,
             start_recording,
             stop_recording,
             is_recording,

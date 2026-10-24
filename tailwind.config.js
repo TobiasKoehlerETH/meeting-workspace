@@ -10,7 +10,7 @@ module.exports = {
   	extend: {
   		fontFamily: {
   			sans: [
-  				'AP Futura', 'Century Gothic', 'Avenir Next', 'Trebuchet MS', 'sans-serif'
+  				'Geist', 'Segoe UI', 'system-ui', 'sans-serif'
   			]
   		},
   		colors: {

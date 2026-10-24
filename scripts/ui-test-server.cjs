@@ -8,7 +8,7 @@ const server = http.createServer((request, response) => {
     response.writeHead(200, { 'Content-Type': 'application/javascript', 'Cache-Control': 'no-store' });
     response.end(fs.readFileSync(bridgePath)); return;
   }
-  const upstream = http.request({ hostname: '127.0.0.1', port: 3120, path: request.url, method: request.method, headers: { ...request.headers, host: '127.0.0.1:3120', 'accept-encoding': 'identity' } }, incoming => {
+  const upstream = http.request({ hostname: 'localhost', port: 3120, path: request.url, method: request.method, headers: { ...request.headers, host: 'localhost:3120', 'accept-encoding': 'identity' } }, incoming => {
     const headers = { ...incoming.headers };
     if (!String(headers['content-type']).includes('text/html')) { response.writeHead(incoming.statusCode, headers); incoming.pipe(response); return; }
     const chunks = [];
@@ -23,8 +23,8 @@ const server = http.createServer((request, response) => {
   request.pipe(upstream);
 });
 server.on('upgrade', (request, socket, head) => {
-  const upstream = require('node:net').connect(3120, '127.0.0.1', () => {
-    const headers = { ...request.headers, host: '127.0.0.1:3120' };
+  const upstream = require('node:net').connect(3120, 'localhost', () => {
+    const headers = { ...request.headers, host: 'localhost:3120' };
     upstream.write(`${request.method} ${request.url} HTTP/1.1\r\n${Object.entries(headers).map(([key, value]) => `${key}: ${value}`).join('\r\n')}\r\n\r\n`);
     if (head.length) upstream.write(head);
     socket.pipe(upstream); upstream.pipe(socket);

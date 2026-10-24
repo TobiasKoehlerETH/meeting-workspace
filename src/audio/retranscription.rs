@@ -101,6 +101,8 @@ pub async fn start_retranscription<R: Runtime>(
     // Reset cancellation flag
     RETRANSCRIPTION_CANCELLED.store(false, Ordering::SeqCst);
 
+    let swiss_german_ready = crate::whisper_engine::commands::whisper_model_downloaded(crate::config::SWISS_GERMAN_WHISPER_MODEL);
+    let (provider, model) = crate::config::speech_model_for_language(provider, model, language.as_deref(), swiss_german_ready);
     let use_parakeet = provider.as_deref() == Some("parakeet");
     let result = run_retranscription(app.clone(), meeting_id.clone(), meeting_folder_path, language, model, provider).await;
 
@@ -179,7 +181,6 @@ async fn run_retranscription<R: Runtime>(
     provider: Option<String>,
 ) -> Result<RetranscriptionResult> {
     let folder_path = PathBuf::from(&meeting_folder_path);
-    let language = language.map(|value| crate::config::normalize_spoken_language(&value).to_owned());
     let audio_path = find_audio_file(&folder_path)?;
 
     // Determine which provider to use (default to whisper)

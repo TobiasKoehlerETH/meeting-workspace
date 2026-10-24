@@ -125,13 +125,10 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
   };
 
   return (
-    <div className='flex flex-col gap-4'>
-      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
+    <div className='flex flex-col gap-3'>
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
         <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Automatic summaries</h3>
-            <p className="text-sm text-gray-600">Summarize after transcription.</p>
-          </div>
+          <h3 title="Summarize after transcription">Automatic summaries</h3>
           <Switch aria-label="Automatic summaries" checked={isAutoSummary} onCheckedChange={toggleIsAutoSummary} />
         </div>
       </div>
@@ -139,8 +136,8 @@ export function SummaryModelSettings({ refetchTrigger }: SummaryModelSettingsPro
       <SummaryLanguageSettings />
       <SummaryLengthSettings />
 
-      <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-        <h3 className="text-lg font-semibold mb-4">Summary model</h3>
+      <div className="bg-white rounded-lg border border-gray-200 p-4">
+        <h3 className="mb-4">Summary model</h3>
 
         <ModelSettingsModal
           modelConfig={modelConfig}

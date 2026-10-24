@@ -30,8 +30,8 @@ export function SettingsPanel({ initialTab = 'general' }: { initialTab?: Setting
         <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />{name}
       </button>)}
     </nav>
-    <section aria-label={label} className="min-w-0 flex-1 overflow-y-auto px-8 py-6">
-      <h2 className="mb-6 text-xl">{label}</h2>
+    <section aria-label={label} className="min-w-0 flex-1 overflow-y-auto px-8 py-8">
+      <h2 className="sr-only">{label}</h2>
       <Content />
     </section>
   </div>;

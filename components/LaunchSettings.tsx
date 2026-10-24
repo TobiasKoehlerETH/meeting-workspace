@@ -7,14 +7,12 @@ import { Switch } from './ui/switch';
 export function LaunchSettings() {
   return <div className="space-y-4">
     <LaunchPreference name="start_minimized" title="Start minimized"
-      description="Open in the tray. Use Open Main Window to return." />
-    <LaunchPreference name="stealth_mode" title="Discreet launch"
-      description="Open in the tray with notifications off. Start recording manually. System microphone indicators remain visible." />
+      description="Open in the tray; use Open Main Window to return." />
   </div>;
 }
 
 function LaunchPreference({ name, title, description }: {
-  name: 'start_minimized' | 'stealth_mode'; title: string; description: string;
+  name: 'start_minimized'; title: string; description: string;
 }) {
   const [enabled, setEnabled] = useState(false);
   const [busy, setBusy] = useState(true);
@@ -42,13 +40,10 @@ function LaunchPreference({ name, title, description }: {
     }
   }
 
-  return <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
+  return <div className="rounded-lg border border-gray-200 bg-white p-4">
     <div className="flex items-center justify-between gap-4">
-      <div>
-        <h3 className="mb-2 text-lg font-semibold text-gray-900">{title}</h3>
-        <p id={`${name}-help`} className="text-sm text-gray-600">{description}</p>
-      </div>
-      <Switch aria-label={title} aria-describedby={`${name}-help`}
+      <h3 title={description}>{title}</h3>
+      <Switch aria-label={title} aria-description={description}
         checked={enabled} disabled={busy} onCheckedChange={savePreference} />
     </div>
     {error && <p role="alert" className="mt-2 text-sm text-red-600">{error}</p>}

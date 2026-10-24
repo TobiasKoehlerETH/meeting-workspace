@@ -1,21 +1,21 @@
 /* A+P workshop style, adapted to a compact desktop workspace. */
 .ap-app {
-  font-family: 'AP Futura', 'Century Gothic', 'Avenir Next', 'Trebuchet MS', sans-serif;
+  font-family: 'Geist', 'Segoe UI', system-ui, sans-serif;
   color: #000;
   background: #fff;
   line-height: 1.45;
 }
 
 .ap-app h1 {
-  color: var(--ap-title-red);
-  font-weight: 400;
-  letter-spacing: -0.025em;
+  color: #000;
+  font-weight: 600;
+  letter-spacing: -0.02em;
   line-height: 1.12;
 }
 
 .ap-app h2 {
-  color: var(--ap-title-red);
-  font-weight: 700;
+  color: #000;
+  font-weight: 600;
   line-height: 1.2;
 }
 
@@ -24,9 +24,11 @@
 }
 
 .ap-app :focus-visible {
-  outline: 2px solid var(--ap-rule-red);
-  outline-offset: 3px;
+  outline: 2px solid #000;
+  outline-offset: 2px;
 }
+/* Input groups draw their own focus ring around the whole field. */
+.ap-app [data-slot='input-group-control']:focus-visible { outline: none; }
 
 .ap-sidebar { border-color: #dedede; }
 .ap-nav-icon { display: inline-flex; width: 40px; height: 40px; align-items: center; justify-content: center; border-radius: 4px; }
@@ -41,23 +43,22 @@
 
 .ap-main { background: #fff; }
 
-.ap-eyebrow { color: #666; font: 10px/1.5 Arial, sans-serif; text-transform: uppercase; letter-spacing: .14em; }
+.ap-eyebrow { color: #666; font-size: 11px; line-height: 1.5; text-transform: uppercase; letter-spacing: .14em; }
 
 .ap-app [role='dialog'] {
-  border-radius: 4px;
-  border-top: 3px solid var(--ap-rule-red);
+  border-radius: 8px;
   background: #fff;
 }
-.ap-settings h2 { color: var(--ap-title-red); font-weight: 400; }
+.ap-settings h2 { color: #000; font-size: 20px; font-weight: 600; letter-spacing: -0.01em; }
 .ap-settings h3, .ap-settings h4 { color: #000; font-size: 15px; font-weight: 600; }
 .ap-app [role='tab'][data-state='active'] {
   color: #000;
-  border-bottom: 2px solid var(--ap-rule-red);
+  border-bottom: 2px solid #000;
   border-radius: 0;
   box-shadow: none;
 }
 .ap-app .bn-container {
-  --bn-font-family: 'AP Futura', 'Century Gothic', 'Trebuchet MS', sans-serif;
+  --bn-font-family: 'Geist', 'Segoe UI', system-ui, sans-serif;
   --bn-colors-editor-background: #fff;
   --bn-colors-editor-text: #000;
   --bn-colors-menu-background: #fff;
@@ -91,11 +92,12 @@ body[data-mini] > :not(.ap-mini-recorder) { display: none !important; }
   gap: 24px;
   margin-block: auto;
   padding: 40px 24px;
-  border: 1px solid #dedede;
-  border-radius: 4px;
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
   background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04);
 }
-.recorder-options { display: flex; flex-direction: column; align-items: center; gap: 16px; border-top: 1px solid #dedede; padding-top: 24px; width: 100%; color: #555; font-size: 14px; text-align: center; }
+.recorder-options { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 8px; border-top: 1px solid #ededed; padding-top: 20px; width: 100%; color: #555; font-size: 14px; text-align: center; }
 .meeting-row { content-visibility: auto; contain-intrinsic-size: auto 40px; }
 
 @media (max-width: 640px) {
@@ -108,7 +110,7 @@ body[data-mini] > :not(.ap-mini-recorder) { display: none !important; }
   .ap-settings > section { min-height: 0; padding: 20px; }
 }
 @media (hover: none) {
-  .meeting-row .opacity-0 { opacity: 1; }
+  .meeting-row .meeting-actions { display: flex; }
 }
 @media (prefers-reduced-motion: reduce) {
   .ap-app *, .ap-app *::before, .ap-app *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }

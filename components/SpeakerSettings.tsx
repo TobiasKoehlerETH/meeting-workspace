@@ -45,7 +45,7 @@ export function SpeakerSettings({ disabled = false }: { disabled?: boolean }) {
         }
         if (value !== settings.speaker_count) void save({ ...settings, speaker_count: value });
       }} />
-    <p id="speaker-count-help" className="text-xs text-gray-500">0 = Auto. Transcribing again resets speaker names.</p>
+    <p id="speaker-count-help" className="text-xs text-gray-500" title="Transcribing again resets speaker names">0 = auto</p>
     {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
   </div>;
 }

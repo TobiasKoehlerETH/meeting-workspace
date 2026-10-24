@@ -25,7 +25,7 @@ Summaries use the built-in local AI. Set Settings > Summary > Summary lines to 1
 
 Speaker detection runs locally when you click Transcribe using the bundled speaker-runtime folder. Keep that folder with the executable. Settings > Transcription lets you turn it off or specify the number of speakers (0 means Auto). Rename speakers in the transcript's Speaker names section. Regenerate summaries to use updated names. Labels are estimates and do not identify Teams accounts.
 
-For discreet launch, use Meeting-Workspace.exe --stealth or enable Settings > General > Discreet launch (stealth mode). The window stays hidden, app notifications are silent, and the tray tooltip shows only the app name. Start and stop recording manually from the tray menu. The menu and main window show recording controls; operating-system microphone indicators remain visible. Use --show to open the window and override saved launch preferences for a new session.
+To start minimized, use Meeting-Workspace.exe --minimized or enable Settings > General > Start minimized. Use Open Main Window in the tray menu to return. Starting a recording from the tray opens the window. The tray tooltip shows recording status. Use --show to open the window and override the saved launch preference for a new session.
 '@
 
 $zipPath = Join-Path $OutputDirectory ('Meeting-Workspace-Portable-' + $applicationVersion + '.zip')

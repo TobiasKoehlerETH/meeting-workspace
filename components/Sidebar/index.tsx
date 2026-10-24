@@ -16,6 +16,12 @@ import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from '
 import type { SettingsTab } from '@/lib/utils';
 
 const errorText = (error: unknown) => error instanceof Error ? error.message : String(error);
+const dayFormat = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short' });
+/** Short creation date for the meeting list, e.g. "5 Oct"; empty when unknown. */
+const shortDate = (value?: string) => {
+  const date = value ? new Date(value) : null;
+  return date && !Number.isNaN(date.getTime()) ? dayFormat.format(date) : '';
+};
 const SettingsPanel = dynamic(() => import('@/components/SettingsPanel').then(module => module.SettingsPanel), {
   loading: () => <p className="p-8 text-sm text-gray-500" role="status">Loading settings…</p>,
 });
@@ -92,8 +98,9 @@ export default function Sidebar() {
           onClick={() => { setCurrentMeeting(meeting); router.push('/meeting-details?id=' + encodeURIComponent(meeting.id)); }}>
           <File className="h-4 w-4 shrink-0 text-gray-500" aria-hidden="true" />
           <span className="min-w-0 flex-1 truncate" title={meeting.title}>{meeting.title}</span>
+          <span className="shrink-0 text-xs tabular-nums text-gray-400 group-hover:hidden group-focus-within:hidden">{shortDate(meeting.created_at)}</span>
         </button>
-        <div className="flex shrink-0 gap-1 pr-1 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
+        <div className="meeting-actions hidden shrink-0 gap-1 pr-1 group-hover:flex group-focus-within:flex">
           <button type="button" aria-label="Edit meeting title" title={'Rename ' + meeting.title} onClick={() => setRenaming(meeting)} className="rounded p-1 hover:bg-gray-100"><Pencil className="h-4 w-4" aria-hidden="true" /></button>
           <button type="button" aria-label="Delete meeting" title={'Delete ' + meeting.title} onClick={() => setDeleting(meeting.id)} className="rounded p-1 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-4 w-4" aria-hidden="true" /></button>
         </div>

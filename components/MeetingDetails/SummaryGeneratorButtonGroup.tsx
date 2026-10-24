@@ -254,9 +254,9 @@ export function SummaryGeneratorButtonGroup({
             onStopGeneration();
           }}
           title="Stop summary generation"
+          aria-label="Stop summary generation"
         >
-          <Square className="xl:mr-2" size={18} fill="currentColor" />
-          <span className="hidden lg:inline xl:inline">Stop</span>
+          <Square size={18} fill="currentColor" />
         </Button>
       ) : (
         <Button
@@ -273,18 +273,17 @@ export function SummaryGeneratorButtonGroup({
               ? 'Loading model configuration...'
               : isCheckingModels
                 ? 'Checking models...'
-                : hasSummary ? 'Regenerate AI Summary' : 'Generate AI Summary'
+                : hasSummary ? 'Regenerate summary' : 'Generate summary'
           }
+          aria-label={hasSummary ? 'Regenerate summary' : 'Generate summary'}
         >
           {isCheckingModels || isModelConfigLoading ? (
             <>
-              <Loader2 className="animate-spin xl:mr-2" size={18} />
-              <span className="hidden xl:inline">Processing...</span>
+              <Loader2 className="animate-spin" size={18} />
             </>
           ) : (
             <>
-              <Sparkles className="xl:mr-2" size={18} />
-              <span className="hidden lg:inline xl:inline">{hasSummary ? 'Regenerate Summary' : 'Generate Summary'}</span>
+              <Sparkles size={18} />
             </>
           )}
         </Button>
@@ -298,10 +297,10 @@ export function SummaryGeneratorButtonGroup({
           <Button
             variant="outline"
             size="sm"
-            title="Summary Settings"
+            title="Summary model"
+            aria-label="Summary model"
           >
             <Settings />
-            <span className="hidden lg:inline">AI Model</span>
           </Button>
         </DialogTrigger>
         <DialogContent
@@ -330,10 +329,10 @@ export function SummaryGeneratorButtonGroup({
             <Button
               variant="outline"
               size="sm"
-              title="Select summary template"
+              title="Summary template"
+              aria-label="Summary template"
             >
               <FileText />
-              <span className="hidden lg:inline">Template</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

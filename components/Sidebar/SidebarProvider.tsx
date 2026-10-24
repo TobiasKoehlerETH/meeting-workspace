@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 export interface CurrentMeeting {
   id: string;
   title: string;
+  created_at?: string;
 }
 
 interface TranscriptSearchResult {
@@ -60,7 +61,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const refetchMeetings = useCallback(async () => {
     try {
       const list = await invoke<CurrentMeeting[]>('api_get_meetings');
-      setMeetings(list.map(({ id, title }) => ({ id, title })));
+      setMeetings(list.map(({ id, title, created_at }) => ({ id, title, created_at })));
     } catch (error) {
       console.error('Error fetching meetings:', error);
       setMeetings([]);

@@ -21,7 +21,8 @@ const parakeet = (label: string, note: string, size_mb: number, rtf: number): Mo
 
 /** Display order is declaration order. */
 export const MODEL_SPECS: Record<string, ModelSpec> = {
-  'large-v3-turbo-q5_0': whisper('Turbo', 'Recommended · accurate and fast', 547, 0.3),
+  'large-v3-turbo-q5_0': whisper('Turbo', 'Recommended for English and German · fast', 547, 0.3),
+  'large-v3-turbo-swiss-german-q5_0': whisper('Swiss German', 'Recommended for Swiss German · used automatically', 547, 0.3),
   'large-v3-q5_0': whisper('Large V3 compact', 'Most accurate · slower', 1031, 0.9),
   'large-v3': whisper('Large V3', 'Most accurate · slowest, most memory', 2951, 1.1),
   'medium-q5_0': whisper('Medium', 'Good accuracy', 514, 0.45),
@@ -33,10 +34,13 @@ export const MODEL_SPECS: Record<string, ModelSpec> = {
   'base-q5_1': whisper('Base compact', 'Very fast · basic accuracy', 57, 0.06, true),
   'tiny': whisper('Tiny', 'Fastest · drafts only', 39, 0.04, true),
   'tiny-q5_1': whisper('Tiny compact', 'Fastest · drafts only', 31, 0.035, true),
-  'parakeet-tdt-0.6b-v3-int8': parakeet('Lightning', 'Recommended · fastest, 25 European languages', 670, 0.05),
+  'parakeet-tdt-0.6b-v3-int8': parakeet('Lightning', 'Recommended · fastest, English and German', 670, 0.05),
   'parakeet-tdt-0.6b-v3-fp32': parakeet('Precise', 'Higher precision · more memory', 2554, 0.1),
   'parakeet-tdt-0.6b-v2-int8': parakeet('Compact', 'English only', 661, 0.05),
 };
+
+/** Swiss German speech always uses this model once downloaded (see `speech_model_for_language`). */
+export const SWISS_GERMAN_MODEL = 'large-v3-turbo-swiss-german-q5_0';
 
 export const modelLabel = (name: string) => MODEL_SPECS[name]?.label ?? name;
 

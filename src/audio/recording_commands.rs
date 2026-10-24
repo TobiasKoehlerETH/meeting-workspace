@@ -283,7 +283,17 @@ pub async fn start_recording_with_devices_and_meeting<R: Runtime>(
             format!("Invalid system device '{}': {}", name, e)
         })?))
     } else {
-        None
+        // Picking only a microphone must not silently drop meeting audio (e.g. Teams in a headset).
+        match default_output_device() {
+            Ok(device) => {
+                info!("🔊 No system audio selected, using system default: '{}'", device.name);
+                Some(Arc::new(device))
+            }
+            Err(e) => {
+                warn!("⚠️ No default system audio available: {}", e);
+                None // System audio is optional
+            }
+        }
     };
 
     // Async-first approach for custom devices - no more blocking operations!
