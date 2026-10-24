@@ -202,11 +202,12 @@ impl HardwareProfile {
 
     /// Generate adaptive Whisper configuration based on hardware
     pub fn get_whisper_config(&self) -> AdaptiveWhisperConfig {
-        // Windows-specific override: Always use beam size 2 for stability
+        // Windows: greedy decoding. On a meeting recording it gave the same text as beam size 2;
+        // the encoder dominates the cost on laptop CPUs either way.
         #[cfg(target_os = "windows")]
         {
             return AdaptiveWhisperConfig {
-                beam_size: 2,
+                beam_size: 1,
                 temperature: 0.2,
                 use_gpu: self.has_gpu_acceleration,
                 max_threads: Some(self.cpu_cores.min(8) as usize),

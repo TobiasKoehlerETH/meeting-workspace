@@ -1,6 +1,6 @@
 use crate::api::TranscriptSegment;
 use anyhow::Result;
-use log::{debug, info};
+use log::info;
 use once_cell::sync::Lazy;
 use std::path::Path;
 use std::sync::Arc;
@@ -98,115 +98,85 @@ pub(crate) fn write_transcripts_json(folder: &Path, segments: &[TranscriptSegmen
     Ok(())
 }
 
-/// Split a long speech segment at the lowest-energy (silence) point near the target size.
-///
-/// Scans for 100ms windows with minimal RMS energy within +/-3 seconds of each target
-/// split point. If no clear silence is found, falls back to a 1-second overlap split
-/// to avoid cutting words at boundaries.
-pub(crate) fn split_segment_at_silence(
+/// Longest audio passed to Whisper in one call: its encoder always runs on a 30s window.
+pub(crate) const MAX_WHISPER_WINDOW_SAMPLES: usize = 30 * 16000;
+
+/// Turn speech pieces into Whisper windows: join consecutive pieces of one speaker into runs
+/// (see `pack_speech_segments`), then split each run into the fewest near-equal windows.
+/// Each Whisper call has a large fixed encoder cost, so fewer, fuller calls are much faster.
+pub(crate) fn whisper_windows(
+    segments: Vec<crate::audio::vad::SpeechSegment>,
+) -> Vec<crate::audio::vad::SpeechSegment> {
+    pack_speech_segments(segments, usize::MAX).iter()
+        .flat_map(|run| split_evenly_at_silence(run, MAX_WHISPER_WINDOW_SAMPLES))
+        .collect()
+}
+
+/// Split a long speech segment into the fewest near-equal chunks of at most ~`max_samples`,
+/// moving each cut to the quietest 100ms within 2s of it. Equal chunks avoid a short leftover
+/// that would cost a full Whisper pass of its own.
+pub(crate) fn split_evenly_at_silence(
     segment: &crate::audio::vad::SpeechSegment,
     max_samples: usize,
 ) -> Vec<crate::audio::vad::SpeechSegment> {
-    const SAMPLE_RATE: usize = 16000;
-    // 100ms window for energy measurement (1600 samples at 16kHz)
-    const ENERGY_WINDOW: usize = SAMPLE_RATE / 10;
-    // Search +/-3 seconds around the target split point
-    const SEARCH_RADIUS: usize = SAMPLE_RATE * 3;
-    // RMS threshold below which we consider a window "silent"
-    const SILENCE_RMS_THRESHOLD: f32 = 0.02;
-    // Overlap to use when no silence boundary is found (1 second)
-    const FALLBACK_OVERLAP: usize = SAMPLE_RATE;
-
+    const WINDOW: usize = 1600; // 100ms
+    const RADIUS: usize = 2 * 16000;
     let total = segment.samples.len();
-    if total <= max_samples {
-        return vec![segment.clone()];
+    // Leave room for the cut to move by RADIUS without exceeding max_samples.
+    let chunk_limit = max_samples.saturating_sub(RADIUS).max(WINDOW);
+    let count = total.div_ceil(chunk_limit).max(1);
+    if count == 1 { return vec![segment.clone()]; }
+    let ms_per_sample = (segment.end_timestamp_ms - segment.start_timestamp_ms) / total as f64;
+    let mut cuts = vec![0];
+    for i in 1..count {
+        let target = total * i / count;
+        let (from, to) = (target.saturating_sub(RADIUS), (target + RADIUS).min(total - WINDOW));
+        let quietest = (from..=to).step_by(160)
+            .map(|at| (at, segment.samples[at..at + WINDOW].iter().map(|s| s * s).sum::<f32>()))
+            .min_by(|a, b| a.1.total_cmp(&b.1))
+            .map_or(target, |(at, _)| at + WINDOW / 2);
+        cuts.push(quietest.max(cuts[cuts.len() - 1] + WINDOW));
     }
+    cuts.push(total);
+    cuts.windows(2).map(|pair| crate::audio::vad::SpeechSegment {
+        samples: segment.samples[pair[0]..pair[1]].to_vec(),
+        start_timestamp_ms: segment.start_timestamp_ms + pair[0] as f64 * ms_per_sample,
+        end_timestamp_ms: segment.start_timestamp_ms + pair[1] as f64 * ms_per_sample,
+        confidence: segment.confidence,
+        speaker: segment.speaker.clone(),
+    }).collect()
+}
 
-    let ms_per_sample = (segment.end_timestamp_ms - segment.start_timestamp_ms)
-        / segment.samples.len() as f64;
-    let mut result = Vec::new();
-    let mut pos = 0usize;
-
-    while pos < total {
-        let remaining = total - pos;
-        if remaining <= max_samples {
-            // Last chunk - take everything remaining
-            let chunk_samples = segment.samples[pos..].to_vec();
-            let chunk_start_ms = segment.start_timestamp_ms + (pos as f64 * ms_per_sample);
-            let chunk_end_ms = segment.end_timestamp_ms;
-            result.push(crate::audio::vad::SpeechSegment {
-                samples: chunk_samples,
-                start_timestamp_ms: chunk_start_ms,
-                end_timestamp_ms: chunk_end_ms,
-                confidence: segment.confidence,
-                speaker: segment.speaker.clone(),
-            });
-            break;
-        }
-
-        // Target split point
-        let target = pos + max_samples;
-
-        // Search window: [target - SEARCH_RADIUS, target + SEARCH_RADIUS]
-        let search_start = target.saturating_sub(SEARCH_RADIUS).max(pos + SAMPLE_RATE);
-        let search_end = (target + SEARCH_RADIUS).min(total.saturating_sub(ENERGY_WINDOW));
-
-        // Find the lowest-energy 100ms window in the search range
-        let mut best_split = target.min(total); // fallback: exact target
-        let mut best_rms = f32::MAX;
-
-        if search_start + ENERGY_WINDOW <= search_end {
-            let mut idx = search_start;
-            while idx + ENERGY_WINDOW <= search_end {
-                let window = &segment.samples[idx..idx + ENERGY_WINDOW];
-                let rms = (window.iter().map(|s| s * s).sum::<f32>() / ENERGY_WINDOW as f32).sqrt();
-                if rms < best_rms {
-                    best_rms = rms;
-                    best_split = idx + ENERGY_WINDOW / 2; // split at center of quiet window
-                }
-                // Step by 10ms (160 samples) for efficiency
-                idx += SAMPLE_RATE / 100;
+/// Pack consecutive speech segments into windows of up to `max_samples`.
+///
+/// Whisper pads every call to a 30-second window, so transcribing many short pieces one by one
+/// costs a full encoder pass each. Pieces join the current window when the speaker matches,
+/// when either side has no speaker, or when the piece is a short interjection (under 2s).
+/// Gaps between pieces shrink to at most 300ms of silence.
+pub(crate) fn pack_speech_segments(
+    segments: Vec<crate::audio::vad::SpeechSegment>,
+    max_samples: usize,
+) -> Vec<crate::audio::vad::SpeechSegment> {
+    const MAX_GAP: usize = 16000 * 3 / 10;
+    const SHORT: usize = 2 * 16000;
+    let mut packed: Vec<crate::audio::vad::SpeechSegment> = Vec::new();
+    for segment in segments {
+        if let Some(last) = packed.last_mut() {
+            let gap = (((segment.start_timestamp_ms - last.end_timestamp_ms) * 16.0).max(0.0) as usize).min(MAX_GAP);
+            let joins = last.speaker == segment.speaker || last.speaker.is_none() || segment.speaker.is_none()
+                || segment.samples.len() < SHORT;
+            if joins && last.samples.len() + gap + segment.samples.len() <= max_samples {
+                last.samples.extend(std::iter::repeat(0.0).take(gap));
+                last.samples.extend_from_slice(&segment.samples);
+                last.end_timestamp_ms = segment.end_timestamp_ms;
+                last.confidence = last.confidence.min(segment.confidence);
+                if last.speaker.is_none() { last.speaker = segment.speaker; }
+                continue;
             }
         }
-
-        let split_at = best_split;
-        if best_rms <= SILENCE_RMS_THRESHOLD {
-            debug!(
-                "Splitting at silence boundary: sample {} (RMS={:.4})",
-                split_at, best_rms
-            );
-        } else {
-            debug!(
-                "No silence found near target (best RMS={:.4}), splitting with overlap at sample {}",
-                best_rms, split_at
-            );
-        }
-
-        // Determine the actual end of this chunk (with overlap if no silence)
-        let chunk_end = if best_rms > SILENCE_RMS_THRESHOLD {
-            (split_at + FALLBACK_OVERLAP).min(total)
-        } else {
-            split_at
-        };
-
-        let chunk_samples = segment.samples[pos..chunk_end].to_vec();
-        let chunk_start_ms = segment.start_timestamp_ms + (pos as f64 * ms_per_sample);
-        let chunk_end_ms = segment.start_timestamp_ms + (chunk_end as f64 * ms_per_sample);
-
-        result.push(crate::audio::vad::SpeechSegment {
-            samples: chunk_samples,
-            start_timestamp_ms: chunk_start_ms,
-            end_timestamp_ms: chunk_end_ms,
-            confidence: segment.confidence,
-            speaker: segment.speaker.clone(),
-        });
-
-        // Advance position to where the current chunk actually ends
-        // to avoid transcribing the overlap region twice
-        pos = chunk_end;
+        packed.push(segment);
     }
-
-    result
+    packed
 }
 
 #[cfg(test)]
@@ -230,5 +200,62 @@ mod tests {
 
         acquired_rx.await.unwrap();
         waiter.await.unwrap();
+    }
+
+    fn speech(start_ms: f64, seconds: f64, speaker: Option<&str>) -> crate::audio::vad::SpeechSegment {
+        crate::audio::vad::SpeechSegment {
+            samples: vec![0.1; (seconds * 16000.0) as usize],
+            start_timestamp_ms: start_ms,
+            end_timestamp_ms: start_ms + seconds * 1000.0,
+            confidence: 0.9,
+            speaker: speaker.map(str::to_string),
+        }
+    }
+
+    #[test]
+    fn pack_speech_segments_joins_interjections_and_splits_on_speaker_change() {
+        let segments = vec![
+            speech(0.0, 5.0, Some("Speaker 1")), speech(5000.0, 1.0, None),
+            speech(6000.0, 1.0, Some("Speaker 2")), speech(9000.0, 5.0, Some("Speaker 1")),
+            speech(14000.0, 6.0, Some("Speaker 2")), speech(20000.0, 25.0, Some("Speaker 2")),
+        ];
+        let packed = pack_speech_segments(segments, MAX_WHISPER_WINDOW_SAMPLES);
+        let spans: Vec<(f64, f64, Option<&str>)> = packed.iter()
+            .map(|s| (s.start_timestamp_ms, s.end_timestamp_ms, s.speaker.as_deref())).collect();
+        assert_eq!(spans, vec![
+            (0.0, 14000.0, Some("Speaker 1")),
+            (14000.0, 20000.0, Some("Speaker 2")),
+            (20000.0, 45000.0, Some("Speaker 2")),
+        ]);
+        // 5s + 1s + 1s + 0.3s gap + 5s
+        assert_eq!(packed[0].samples.len(), 16000 * 123 / 10);
+    }
+
+    #[test]
+    fn whisper_windows_balances_a_speaker_run() {
+        let pieces = vec![
+            speech(0.0, 24.0, Some("Speaker 1")), speech(24000.0, 24.0, None),
+            speech(48000.0, 6.0, Some("Speaker 1")), speech(54000.0, 10.0, Some("Speaker 2")),
+        ];
+        let windows = whisper_windows(pieces);
+        let lengths: Vec<f64> = windows.iter().map(|w| w.samples.len() as f64 / 16000.0).collect();
+        assert_eq!(lengths.len(), 3, "{lengths:?}");
+        assert!(lengths[0] > 25.0 && lengths[1] > 25.0, "{lengths:?}");
+        assert_eq!(windows[2].speaker.as_deref(), Some("Speaker 2"));
+        assert!(windows.iter().all(|w| w.samples.len() <= MAX_WHISPER_WINDOW_SAMPLES));
+    }
+
+    #[test]
+    fn split_evenly_at_silence_avoids_a_short_leftover() {
+        let mut segment = speech(1000.0, 50.0, None);
+        let quiet = 24 * 16000;
+        segment.samples[quiet..quiet + 3200].fill(0.0);
+        let chunks = split_evenly_at_silence(&segment, MAX_WHISPER_WINDOW_SAMPLES);
+        assert_eq!(chunks.len(), 2);
+        assert!((chunks[0].samples.len() as i64 - (quiet as i64 + 800)).abs() <= 800);
+        assert_eq!(chunks.iter().map(|c| c.samples.len()).sum::<usize>(), segment.samples.len());
+        assert_eq!(chunks[1].end_timestamp_ms, 51000.0);
+        assert!(chunks.iter().all(|c| c.samples.len() <= MAX_WHISPER_WINDOW_SAMPLES));
+        assert_eq!(split_evenly_at_silence(&speech(0.0, 20.0, None), MAX_WHISPER_WINDOW_SAMPLES).len(), 1);
     }
 }

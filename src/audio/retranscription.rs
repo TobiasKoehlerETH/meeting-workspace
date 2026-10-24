@@ -2,7 +2,7 @@
 
 use crate::audio::decoder::decode_audio_file;
 use crate::audio::vad::get_speech_chunks_with_progress;
-use super::common::{create_transcript_segments, split_segment_at_silence, write_transcripts_json};
+use super::common::{create_transcript_segments, whisper_windows, write_transcripts_json};
 use super::constants::AUDIO_EXTENSIONS;
 use crate::config::{DEFAULT_WHISPER_MODEL, DEFAULT_PARAKEET_MODEL};
 use crate::parakeet_engine::ParakeetEngine;
@@ -319,27 +319,7 @@ async fn run_retranscription<R: Runtime>(
         None
     };
 
-    // Split very long segments at silence boundaries for better transcription quality.
-    // Hard cuts at arbitrary sample positions lose words at boundaries. Instead, scan
-    // for the lowest-energy window near the target split point and cut there.
-    const MAX_SEGMENT_SAMPLES: usize = 25 * 16000; // 25 seconds at 16kHz
-
-    let mut processable_segments: Vec<crate::audio::vad::SpeechSegment> = Vec::new();
-    for segment in speech_segments {
-        if segment.samples.len() > MAX_SEGMENT_SAMPLES {
-            debug!(
-                "Splitting large segment ({:.0}ms, {} samples) at silence boundaries",
-                segment.end_timestamp_ms - segment.start_timestamp_ms,
-                segment.samples.len()
-            );
-
-            let sub_segments = split_segment_at_silence(&segment, MAX_SEGMENT_SAMPLES);
-            debug!("Split into {} sub-segments", sub_segments.len());
-            processable_segments.extend(sub_segments);
-        } else {
-            processable_segments.push(segment);
-        }
-    }
+    let processable_segments = whisper_windows(speech_segments);
 
     let processable_count = processable_segments.len();
     info!("Processing {} segments (after splitting)", processable_count);
@@ -851,6 +831,42 @@ pub async fn is_retranscription_in_progress_command() -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Times the Whisper final pass on a real recording with the production windowing.
+    /// MW_BENCH_AUDIO=<wav> MW_BENCH_MODEL=<model> [MW_BENCH_LANGUAGE=gsw]
+    #[tokio::test]
+    #[ignore = "Requires a local recording and a downloaded Whisper model"]
+    async fn whisper_final_pass_benchmark() {
+        let audio = std::env::var("MW_BENCH_AUDIO").expect("MW_BENCH_AUDIO");
+        let model = std::env::var("MW_BENCH_MODEL").unwrap_or_else(|_| DEFAULT_WHISPER_MODEL.to_string());
+        let language = std::env::var("MW_BENCH_LANGUAGE").ok();
+        let total = std::time::Instant::now();
+        let samples = decode_audio_file(Path::new(&audio)).unwrap().into_whisper_format();
+        let segments = get_speech_chunks_with_progress(&samples, VAD_REDEMPTION_TIME_MS, |_, _| true).unwrap();
+        println!("audio {:.1}s, decode+VAD {}ms", samples.len() as f64 / 16000.0, total.elapsed().as_millis());
+        let started = std::time::Instant::now();
+        let directory = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("speaker-runtime");
+        let settings = crate::speakers::SpeakerSettings { enabled: true, speaker_count: 0 };
+        let turns = crate::speakers::detect_speakers(&samples, &directory, &settings, || false).unwrap();
+        let pieces = crate::speakers::label_segments(segments, &turns);
+        println!("speakers {}ms, {} pieces", started.elapsed().as_millis(), pieces.len());
+        let windows = whisper_windows(pieces);
+
+        let models = PathBuf::from(std::env::var("APPDATA").unwrap()).join("local.meetingworkspace.app/models");
+        let engine = WhisperEngine::new_with_models_dir(Some(models)).unwrap();
+        engine.discover_models().await.unwrap();
+        let started = std::time::Instant::now();
+        engine.load_model(&model).await.unwrap();
+        println!("model load {}ms", started.elapsed().as_millis());
+        let started = std::time::Instant::now();
+        for window in &windows {
+            let one = std::time::Instant::now();
+            let (text, _, _) = engine.transcribe_audio_with_confidence(window.samples.clone(), language.clone()).await.unwrap();
+            println!("  [{:.1}-{:.1}s {} | {:.1}s audio, {}ms] {}", window.start_timestamp_ms / 1000.0, window.end_timestamp_ms / 1000.0,
+                window.speaker.as_deref().unwrap_or("-"), window.samples.len() as f64 / 16000.0, one.elapsed().as_millis(), text);
+        }
+        println!("whisper {} windows {}ms, total {}ms", windows.len(), started.elapsed().as_millis(), total.elapsed().as_millis());
+    }
 
     #[test]
     fn test_create_transcript_segments_empty() {

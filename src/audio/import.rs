@@ -18,7 +18,7 @@ use tauri_plugin_dialog::DialogExt;
 use uuid::Uuid;
 
 use super::audio_processing::create_meeting_folder;
-use super::common::{create_transcript_segments, split_segment_at_silence, write_transcripts_json};
+use super::common::{create_transcript_segments, whisper_windows, write_transcripts_json};
 use super::constants::AUDIO_EXTENSIONS;
 use super::recording_preferences::get_default_recordings_folder;
 
@@ -527,27 +527,7 @@ async fn run_import<R: Runtime>(
         None
     };
 
-    // Split very long segments at silence boundaries for better transcription quality.
-    // Hard cuts at arbitrary sample positions lose words at boundaries. Instead, scan
-    // for the lowest-energy window near the target split point and cut there.
-    const MAX_SEGMENT_SAMPLES: usize = 25 * 16000; // 25 seconds at 16kHz
-
-    let mut processable_segments: Vec<crate::audio::vad::SpeechSegment> = Vec::new();
-    for segment in speech_segments {
-        if segment.samples.len() > MAX_SEGMENT_SAMPLES {
-            debug!(
-                "Splitting large segment ({:.0}ms, {} samples) at silence boundaries",
-                segment.end_timestamp_ms - segment.start_timestamp_ms,
-                segment.samples.len()
-            );
-
-            let sub_segments = split_segment_at_silence(&segment, MAX_SEGMENT_SAMPLES);
-            debug!("Split into {} sub-segments", sub_segments.len());
-            processable_segments.extend(sub_segments);
-        } else {
-            processable_segments.push(segment);
-        }
-    }
+    let processable_segments = whisper_windows(speech_segments);
 
     let processable_count = processable_segments.len();
     info!("Processing {} segments (after splitting)", processable_count);
@@ -1121,8 +1101,10 @@ mod tests {
         let _ = std::fs::remove_file(temp_file);
     }
 
+    use crate::audio::common::{split_evenly_at_silence, MAX_WHISPER_WINDOW_SAMPLES};
+
     #[test]
-    fn test_split_segment_at_silence_short_segment() {
+    fn test_split_evenly_at_silence_short_segment() {
         // Segment shorter than max — returned as-is
         let segment = crate::audio::vad::SpeechSegment {
             samples: vec![0.1; 16000], // 1 second
@@ -1131,13 +1113,13 @@ mod tests {
             confidence: 0.9,
             speaker: None,
         };
-        let result = split_segment_at_silence(&segment, 25 * 16000);
+        let result = split_evenly_at_silence(&segment, MAX_WHISPER_WINDOW_SAMPLES);
         assert_eq!(result.len(), 1);
         assert_eq!(result[0].samples.len(), 16000);
     }
 
     #[test]
-    fn test_split_segment_at_silence_splits_long_segment() {
+    fn test_split_evenly_at_silence_splits_long_segment() {
         // 60-second segment of low-level noise with a silent gap at ~25s
         let mut samples = vec![0.01f32; 60 * 16000];
         // Insert silence at 25 seconds (sample 400000)
@@ -1152,7 +1134,7 @@ mod tests {
             speaker: None,
         };
 
-        let result = split_segment_at_silence(&segment, 25 * 16000);
+        let result = split_evenly_at_silence(&segment, MAX_WHISPER_WINDOW_SAMPLES);
         assert!(result.len() >= 2, "Should split into at least 2 segments, got {}", result.len());
 
         // All sub-segments should have samples
@@ -1167,8 +1149,8 @@ mod tests {
     }
 
     #[test]
-    fn test_split_segment_at_silence_no_silence_uses_overlap() {
-        // Continuous speech (constant energy) — should still split with overlap
+    fn test_split_evenly_at_silence_without_silence_keeps_all_audio() {
+        // Continuous speech (constant energy) — still splits into whole windows
         let segment = crate::audio::vad::SpeechSegment {
             samples: vec![0.5f32; 60 * 16000], // 60 seconds of "speech"
             start_timestamp_ms: 0.0,
@@ -1177,12 +1159,13 @@ mod tests {
             speaker: None,
         };
 
-        let result = split_segment_at_silence(&segment, 25 * 16000);
+        let result = split_evenly_at_silence(&segment, MAX_WHISPER_WINDOW_SAMPLES);
         assert!(result.len() >= 2);
 
-        // Total samples should exceed input due to overlap
+        // Chunks cover the input exactly and each fits one Whisper window
         let total_samples: usize = result.iter().map(|s| s.samples.len()).sum();
-        assert!(total_samples >= 60 * 16000, "Overlap should not lose samples");
+        assert_eq!(total_samples, 60 * 16000);
+        assert!(result.iter().all(|s| s.samples.len() <= MAX_WHISPER_WINDOW_SAMPLES));
     }
 
     #[test]

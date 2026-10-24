@@ -531,6 +531,12 @@ impl WhisperEngine {
     /// and no token timestamps (segment times come from VAD).
     fn decoding_params(language: Option<&str>) -> FullParams<'_, 'static> {
         let config = crate::audio::HardwareProfile::detect().get_whisper_config();
+        #[cfg(test)]
+        let config = crate::audio::hardware_detector::AdaptiveWhisperConfig {
+            beam_size: std::env::var("MW_BENCH_BEAM").ok().and_then(|v| v.parse().ok()).unwrap_or(config.beam_size),
+            max_threads: std::env::var("MW_BENCH_THREADS").ok().and_then(|v| v.parse().ok()).or(config.max_threads),
+            ..config
+        };
         let mut params = if config.beam_size > 1 {
             FullParams::new(SamplingStrategy::BeamSearch { beam_size: config.beam_size as i32, patience: 1.0 })
         } else {
