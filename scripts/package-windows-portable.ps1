@@ -12,10 +12,14 @@ Copy-Item -LiteralPath (Join-Path $releaseDirectory 'meeting-workspace.exe') -De
 Copy-Item -LiteralPath (Join-Path $projectRoot 'src-tauri\binaries\ffmpeg-x86_64-pc-windows-msvc.exe') -Destination (Join-Path $portableDirectory 'ffmpeg.exe') -Force
 Copy-Item -LiteralPath (Join-Path $projectRoot 'src-tauri\binaries\llama-helper-x86_64-pc-windows-msvc.exe') -Destination (Join-Path $portableDirectory 'llama-helper.exe') -Force
 Get-ChildItem -LiteralPath (Join-Path $projectRoot 'src-tauri\runtime') -Filter '*.dll' -File | Copy-Item -Destination $portableDirectory -Force
-Copy-Item -LiteralPath (Join-Path $projectRoot 'src-tauri\templates') -Destination $portableDirectory -Recurse -Force
-Copy-Item -LiteralPath (Join-Path $projectRoot 'src-tauri\speaker-runtime') -Destination $portableDirectory -Recurse -Force
+foreach ($resourceFolder in @('templates', 'licenses')) {
+    $resourceDestination = Join-Path $portableDirectory $resourceFolder
+    New-Item -ItemType Directory -Force -Path $resourceDestination | Out-Null
+    Get-ChildItem -LiteralPath (Join-Path $projectRoot ('src-tauri\' + $resourceFolder)) -Force |
+        Copy-Item -Destination $resourceDestination -Recurse -Force
+}
 Copy-Item -LiteralPath (Join-Path $projectRoot 'LICENSE') -Destination $portableDirectory -Force
-Copy-Item -LiteralPath (Join-Path $projectRoot 'src-tauri\licenses') -Destination $portableDirectory -Recurse -Force
+& "$PSScriptRoot\stage-speaker-runtime.ps1" -AppDirectories @($portableDirectory)
 Set-Content -LiteralPath (Join-Path $portableDirectory 'README.txt') -Value @'
 Run Meeting-Workspace.exe. Keep the executables, DLLs, templates folder, and LICENSE together. No installation is required. Application data is stored in your Windows application-data directory.
 

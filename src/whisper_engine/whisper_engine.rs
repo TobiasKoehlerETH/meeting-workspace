@@ -1054,3 +1054,31 @@ impl WhisperEngine {
         Ok(())
     }
 }
+
+#[cfg(all(test, target_os = "windows", feature = "vulkan"))]
+mod gpu_tests {
+    use super::*;
+
+    #[tokio::test]
+    #[ignore = "Requires a Vulkan GPU, downloaded Whisper Turbo, and the generated speech fixture"]
+    async fn whisper_vulkan_transcribes_speech() {
+        let audio = std::env::var("MEETING_WORKSPACE_SPEECH_FIXTURE")
+            .expect("Run scripts/build-windows.ps1 -TestWhisperGpu to generate the speech fixture");
+        let samples = crate::audio::decoder::decode_audio_file(std::path::Path::new(&audio))
+            .unwrap().into_whisper_format();
+        assert!(samples.len() >= 16000, "The fixture must contain at least one second of speech");
+        let models = PathBuf::from(std::env::var("APPDATA").unwrap())
+            .join("local.meetingworkspace.app/models");
+        let engine = WhisperEngine::new_with_models_dir(Some(models)).unwrap();
+        engine.discover_models().await.unwrap();
+        engine.load_model(crate::config::DEFAULT_WHISPER_MODEL).await.unwrap();
+        let (text, _, _) = engine.transcribe_audio_with_confidence(samples, Some("en".into()))
+            .await.unwrap();
+        println!("Whisper Vulkan transcription: {text}");
+        let normalized = text.to_lowercase();
+        for word in ["test", "meeting", "transcription"] {
+            assert!(normalized.contains(word), "Missing '{word}' in GPU transcription: {text}");
+        }
+        engine.unload_model().await;
+    }
+}

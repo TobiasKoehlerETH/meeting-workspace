@@ -1,8 +1,33 @@
-param([switch]$NativeOnly, [switch]$AppOnly, [switch]$TestTranscription, [switch]$TestUnit, [switch]$TestHelper, [switch]$TestSummary, [switch]$TestSpeakers)
+param(
+    [switch]$NativeOnly, [switch]$AppOnly, [switch]$TestTranscription,
+    [switch]$TestWhisperGpu, [switch]$TestUnit, [switch]$TestHelper,
+    [switch]$TestSummary, [switch]$TestSpeakers,
+    [ValidateSet('vulkan', 'cpu')][string]$SpeechBackend = 'vulkan'
+)
 
 $ErrorActionPreference = 'Stop'
 $projectRoot = Split-Path -Parent $PSScriptRoot
 Set-Location -LiteralPath $projectRoot
+
+$speechFeatureArgs = @()
+if (-not $NativeOnly -and -not $TestHelper) {
+    if ($TestWhisperGpu -and $SpeechBackend -ne 'vulkan') {
+        throw 'The GPU transcription check requires -SpeechBackend vulkan.'
+    }
+    if ($SpeechBackend -eq 'vulkan') {
+        if (-not $env:VULKAN_SDK) {
+            $env:VULKAN_SDK = Join-Path $projectRoot '.build-tools\vulkan-sdk'
+        }
+        foreach ($sdkFile in @('Bin\glslc.exe', 'Include\vulkan\vulkan.h', 'Lib\vulkan-1.lib')) {
+            if (-not (Test-Path -LiteralPath (Join-Path $env:VULKAN_SDK $sdkFile))) {
+                throw "Vulkan SDK file missing: $sdkFile. Set VULKAN_SDK to the SDK directory (see BUILD-WINDOWS.md), or use -SpeechBackend cpu."
+            }
+        }
+        $env:PATH = "$env:VULKAN_SDK\Bin;$env:PATH"
+        $speechFeatureArgs = @('--features', 'vulkan')
+    }
+    Write-Host "Whisper backend: $SpeechBackend"
+}
 
 $buildTools = @(
     '.build-tools\Scripts\cmake.exe',
@@ -50,12 +75,13 @@ Get-ChildItem -LiteralPath (Join-Path $redistVersion.FullName 'x64') -Recurse -F
 if (-not $NativeOnly -and -not $TestHelper) {
     & .\.build-tools\Scripts\python.exe scripts\prepare-speaker-runtime.py
     if ($LASTEXITCODE -ne 0) { throw 'Local speaker runtime preparation failed.' }
+    & "$PSScriptRoot\stage-speaker-runtime.ps1"
 }
 
 if ($TestSummary) {
     & $PSCommandPath -NativeOnly
     $env:MEETING_WORKSPACE_LLAMA_HELPER = Join-Path $projectRoot 'src-tauri\binaries\llama-helper-x86_64-pc-windows-msvc.exe'
-    cargo test --release --locked -p meeting-workspace --lib local_summary_respects_requested_line_limits --target-dir target/windows-app -- --ignored --nocapture
+    cargo test --release --locked -p meeting-workspace @speechFeatureArgs --lib local_summary_respects_requested_line_limits --target-dir target/windows-app -- --ignored --nocapture
     if ($LASTEXITCODE -ne 0) { throw 'Local summary inference checks failed.' }
     return
 }
@@ -66,13 +92,13 @@ if ($TestHelper) {
     return
 }
 
-if ($TestUnit -or $TestTranscription -or $TestSpeakers -or $AppOnly) {
+if ($TestUnit -or $TestTranscription -or $TestWhisperGpu -or $TestSpeakers -or $AppOnly) {
     # Tauri validates bundled resources even when compiling native unit tests.
     & $PSCommandPath -NativeOnly
 }
 
 if ($TestUnit) {
-    cargo test --release --locked -p meeting-workspace --lib --target-dir target/windows-app
+    cargo test --release --locked -p meeting-workspace @speechFeatureArgs --lib --target-dir target/windows-app
     if ($LASTEXITCODE -ne 0) { throw 'Native unit tests failed.' }
     return
 }
@@ -84,12 +110,12 @@ if ($TestSpeakers) {
         Invoke-WebRequest 'https://github.com/k2-fsa/sherpa-onnx/releases/download/speaker-segmentation-models/0-four-speakers-zh.wav' -OutFile $fixture
     }
     if ((Get-FileHash -LiteralPath $fixture).Hash -ne $expectedHash) { throw 'Speaker fixture checksum mismatch.' }
-    cargo test --release --locked -p meeting-workspace --lib local_four_speaker_smoke --target-dir target/windows-app -- --ignored --nocapture
+    cargo test --release --locked -p meeting-workspace @speechFeatureArgs --lib local_four_speaker_smoke --target-dir target/windows-app -- --ignored --nocapture
     if ($LASTEXITCODE -ne 0) { throw 'Local speaker inference check failed.' }
     return
 }
 
-if ($TestTranscription) {
+if ($TestTranscription -or $TestWhisperGpu) {
     $env:MEETING_WORKSPACE_SPEECH_FIXTURE = Join-Path $projectRoot '.build-tools\transcription-smoke.wav'
     powershell.exe -NoProfile -NonInteractive -Command {
         Add-Type -AssemblyName System.Speech
@@ -102,14 +128,23 @@ if ($TestTranscription) {
         }
     }
     if ($LASTEXITCODE -ne 0) { throw 'Could not create the synthetic transcription test audio.' }
-    # Mixer, VAD, language, and WAV checks are already covered by -TestUnit.
-    cargo test --release --locked -p meeting-workspace --lib parakeet_final_pass_from_original_speech --target-dir target/windows-app -- --ignored --nocapture
-    if ($LASTEXITCODE -ne 0) { throw 'Local Parakeet final-pass check failed.' }
+    if ($TestWhisperGpu) {
+        $gpuCheckLog = Join-Path $projectRoot '.build-tools\whisper-gpu-check.log'
+        cargo test --release --locked -p meeting-workspace @speechFeatureArgs --lib whisper_vulkan_transcribes_speech --target-dir target/windows-app -- --ignored --nocapture 2>&1 |
+            Tee-Object -FilePath $gpuCheckLog
+        if ($LASTEXITCODE -ne 0) { throw 'Whisper GPU transcription check failed.' }
+        if (-not (Select-String -LiteralPath $gpuCheckLog -SimpleMatch 'using Vulkan backend' -Quiet)) {
+            throw "Transcription did not confirm Vulkan execution. Inspect $gpuCheckLog."
+        }
+    } else {
+        cargo test --release --locked -p meeting-workspace @speechFeatureArgs --lib parakeet_final_pass_from_original_speech --target-dir target/windows-app -- --ignored --nocapture
+        if ($LASTEXITCODE -ne 0) { throw 'Local Parakeet final-pass check failed.' }
+    }
     return
 }
 
 if ($AppOnly) {
-    cargo build --release --locked -p meeting-workspace --features tauri/custom-protocol --target-dir target/windows-app
+    cargo build --release --locked -p meeting-workspace @speechFeatureArgs --features tauri/custom-protocol --target-dir target/windows-app
     if ($LASTEXITCODE -ne 0) { throw 'The Meeting Workspace application failed to build.' }
     return
 }
@@ -130,5 +165,7 @@ if ($NativeOnly) {
 
 & $PSCommandPath -NativeOnly
 $env:CARGO_TARGET_DIR = "$projectRoot\target\windows-app"
-pnpm tauri build --config src-tauri/tauri.local.conf.json --bundles nsis --no-sign --ci
+# pnpm's dependency links must resolve to their actual package directories.
+$env:NODE_OPTIONS = (([string]$env:NODE_OPTIONS) -replace '(^|\s)--preserve-symlinks(?:-main)?(?=\s|$)', '$1').Trim()
+pnpm tauri build @speechFeatureArgs --config src-tauri/tauri.local.conf.json --bundles nsis --no-sign --ci
 if ($LASTEXITCODE -ne 0) { throw 'The Meeting Workspace Windows build failed.' }

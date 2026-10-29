@@ -11,7 +11,8 @@ Record and save high-quality audio first. Transcribe and summarize locally when 
 - Stop saves audio only. Select the saved meeting and click **Transcribe** to start local speech and speaker detection. No live transcription or automatic inference runs when recording ends.
 - **Listen to recording** plays the saved audio inside the app without loading the whole file into JavaScript.
 - A progress bar shows decoding, speaker detection, transcription, and saving stages during manual transcription.
-- New setups default to quantized Whisper Turbo (`large-v3-turbo-q5_0`), using beam search with five candidates.
+- New setups default to quantized Whisper Turbo (`large-v3-turbo-q5_0`). Windows uses greedy decoding.
+- The Windows GPU build accelerates Whisper through Vulkan, including the Swiss German model. Parakeet and speaker detection use their existing CPU runtimes.
 - Whisper large-v3 remains available when accuracy matters more than processing time and memory.
 - Parakeet remains available as a faster local alternative.
 - Local summaries default to Qwen 3.5 4B. Smaller local models remain available for limited memory.

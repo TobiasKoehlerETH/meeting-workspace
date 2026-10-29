@@ -17,7 +17,7 @@ Saving is mandatory because later transcription uses the recording. Stop does no
 
 ## Transcription
 
-New setups use quantized Whisper Turbo, with beam size 5 and deterministic initial decoding.
+New setups use quantized Whisper Turbo with deterministic initial decoding. Windows uses greedy decoding; other platforms select the beam size from the hardware profile.
 Saved model choices are retained. Whisper's hardware thread limit is applied to inference.
 Parakeet remains selectable for faster processing. Existing acceleration features remain available.
 Speech detection and segmentation run after capture. The speech model is unloaded after the batch job, freeing memory before summary generation.
@@ -105,3 +105,24 @@ The UI uses one recording-state poll while capturing, instead of an additional p
 
 Nineteen frontend tests pass, including audio-only saves, manual transcription, double-click protection, stage progress, listener cleanup, lazy playback, device-request sharing, and render isolation.
 The native suite passed 201 tests with five opt-in checks skipped. Type checking and the command audit also passed. One parallel Node test run encountered an internal test-runner serialization error after its assertions passed; rerunning the full suite with one test worker passed all nineteen tests.
+
+## Windows Vulkan verification on 29 October 2026
+
+The Windows build script now enables Vulkan for Whisper by default. Use `-SpeechBackend cpu` for a CPU build.
+The project-local SDK setup verifies LunarG's checksum and signature and leaves the registry and system PATH unchanged.
+
+On this i7-1355U laptop, the GPU inference check selected `Intel(R) Iris(R) Xe Graphics`, allocated a 573.40 MB `Vulkan0` model buffer, and reported `whisper_backend_init_gpu: using Vulkan backend`.
+The downloaded Whisper Turbo Q5 model correctly transcribed the generated fixture as "This is a test of meeting transcription."
+Run `scripts/build-windows.ps1 -TestWhisperGpu` to repeat the check. The script fails if the recognized words are missing or the native runtime does not confirm Vulkan execution.
+
+All 218 native unit tests passed in both the CPU and Vulkan builds. The separate GPU inference check and all 37 frontend tests passed too.
+The production frontend build and type checks passed after restoring normal Node dependency resolution for pnpm.
+These checks establish GPU execution and basic transcription correctness. They do not measure a meeting speedup or Swiss German accuracy. Other workloads were active on the laptop during verification.
+
+## Speaker runtime in Cargo output folders
+
+The reported missing-speaker-files error came from a running `target/windows-app/release/deps/meeting_workspace.exe`. Its binary hash matched the portable GPU app, but its folder lacked `speaker-runtime`. The portable folder already contained the complete runtime.
+
+A diagnostic linked to the app's Tauri path library reproduced missing segmentation, embedding, and helper files in `release/deps`. After staging the runtime there, the same lookup found all three. The speaker helper in that repaired folder processed the saved 17-second recording successfully and returned one speaker.
+
+Windows builds now stage and verify the runtime beside both Cargo executable locations. Portable packaging uses the same checksum checks. Repeating staging leaves unchanged files in place.
